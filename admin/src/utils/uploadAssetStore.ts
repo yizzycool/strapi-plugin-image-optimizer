@@ -385,7 +385,6 @@ export const patchUploadFetch = () => {
 
     if (isMediaUploadRequest(url, method) && body instanceof FormData) {
       const sourceFormData = body;
-      const nextFormData = new FormData();
       const files: File[] = [];
       const fileInfos: string[] = [];
 
@@ -396,6 +395,12 @@ export const patchUploadFetch = () => {
           fileInfos.push(value);
         }
       });
+
+      if (files.length === 0) {
+        return originalFetch(input, init);
+      }
+
+      const nextFormData = new FormData();
 
       const preferencesPayload: Array<{
         assetId?: string;
@@ -441,6 +446,10 @@ export const patchUploadFetch = () => {
           JSON.stringify(buildFileInfoPayload(parsed, preference))
         );
       });
+
+      for (let index = files.length; index < fileInfos.length; index += 1) {
+        nextFormData.append('fileInfo', fileInfos[index]);
+      }
 
       nextFormData.append('imageOptimizerPreferences', JSON.stringify(preferencesPayload));
 
