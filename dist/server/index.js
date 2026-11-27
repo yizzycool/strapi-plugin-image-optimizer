@@ -402,7 +402,7 @@ const preference = ({ strapi }) => ({
     }).set({ value: { mode } });
   },
   async getGlobalSettings() {
-    const configDefaults = strapi.plugin(PLUGIN_ID).config;
+    const configDefaults = strapi.config.get(`plugin::${PLUGIN_ID}`);
     const stored = await strapi.store({
       type: "plugin",
       name: PLUGIN_ID,
