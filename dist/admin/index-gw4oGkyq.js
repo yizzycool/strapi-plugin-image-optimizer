@@ -1,10 +1,28 @@
-import { createRoot } from "react-dom/client";
-import * as React from "react";
-import React__default, { useState, useEffect, useSyncExternalStore } from "react";
-import { jsx, jsxs, Fragment } from "react/jsx-runtime";
-import { Box, Flex, Typography, Field, Radio, Grid, TextInput, SingleSelect, SingleSelectOption, IconButton, Button, DesignSystemProvider, darkTheme, lightTheme } from "@strapi/design-system";
-import { createPortal } from "react-dom";
-import { Sparkle, Cross } from "@strapi/icons";
+"use strict";
+const client = require("react-dom/client");
+const React = require("react");
+const jsxRuntime = require("react/jsx-runtime");
+const designSystem = require("@strapi/design-system");
+const reactDom = require("react-dom");
+const icons = require("@strapi/icons");
+function _interopNamespace(e) {
+  if (e && e.__esModule) return e;
+  const n = Object.create(null, { [Symbol.toStringTag]: { value: "Module" } });
+  if (e) {
+    for (const k in e) {
+      if (k !== "default") {
+        const d = Object.getOwnPropertyDescriptor(e, k);
+        Object.defineProperty(n, k, d.get ? d : {
+          enumerable: true,
+          get: () => e[k]
+        });
+      }
+    }
+  }
+  n.default = e;
+  return Object.freeze(n);
+}
+const React__namespace = /* @__PURE__ */ _interopNamespace(React);
 const __variableDynamicImportRuntimeHelper = (glob, path, segs) => {
   const v = glob[path];
   if (v) {
@@ -4064,10 +4082,10 @@ function createIntl$1(config, cache) {
 function invariantIntlContext(intl) {
   invariant(intl, "[React Intl] Could not find required `intl` object. <IntlProvider> needs to exist in the component ancestry.");
 }
-var DEFAULT_INTL_CONFIG = __assign(__assign({}, DEFAULT_INTL_CONFIG$1), { textComponent: React.Fragment });
+var DEFAULT_INTL_CONFIG = __assign(__assign({}, DEFAULT_INTL_CONFIG$1), { textComponent: React__namespace.Fragment });
 function assignUniqueKeysToParts(formatXMLElementFn) {
   return function(parts) {
-    return formatXMLElementFn(React.Children.toArray(parts));
+    return formatXMLElementFn(React__namespace.Children.toArray(parts));
   };
 }
 function shallowEqual(objA, objB) {
@@ -4272,7 +4290,7 @@ function requireReactIs_development() {
       var ContextProvider = REACT_PROVIDER_TYPE;
       var Element2 = REACT_ELEMENT_TYPE;
       var ForwardRef = REACT_FORWARD_REF_TYPE;
-      var Fragment2 = REACT_FRAGMENT_TYPE;
+      var Fragment = REACT_FRAGMENT_TYPE;
       var Lazy = REACT_LAZY_TYPE;
       var Memo = REACT_MEMO_TYPE;
       var Portal = REACT_PORTAL_TYPE;
@@ -4331,7 +4349,7 @@ function requireReactIs_development() {
       reactIs_development.ContextProvider = ContextProvider;
       reactIs_development.Element = Element2;
       reactIs_development.ForwardRef = ForwardRef;
-      reactIs_development.Fragment = Fragment2;
+      reactIs_development.Fragment = Fragment;
       reactIs_development.Lazy = Lazy;
       reactIs_development.Memo = Memo;
       reactIs_development.Portal = Portal;
@@ -4457,13 +4475,13 @@ function requireHoistNonReactStatics_cjs() {
   return hoistNonReactStatics_cjs;
 }
 requireHoistNonReactStatics_cjs();
-var IntlContext = typeof window !== "undefined" && !window.__REACT_INTL_BYPASS_GLOBAL_CONTEXT__ ? window.__REACT_INTL_CONTEXT__ || (window.__REACT_INTL_CONTEXT__ = React.createContext(null)) : React.createContext(null);
+var IntlContext = typeof window !== "undefined" && !window.__REACT_INTL_BYPASS_GLOBAL_CONTEXT__ ? window.__REACT_INTL_CONTEXT__ || (window.__REACT_INTL_CONTEXT__ = React__namespace.createContext(null)) : React__namespace.createContext(null);
 IntlContext.Consumer;
 var IntlProvider$1 = IntlContext.Provider;
 var Provider = IntlProvider$1;
 var Context = IntlContext;
 function useIntl() {
-  var intl = React.useContext(Context);
+  var intl = React__namespace.useContext(Context);
   invariantIntlContext(intl);
   return intl;
 }
@@ -4504,8 +4522,8 @@ function createFormattedComponent(name) {
     if (typeof children === "function") {
       return children(formattedValue);
     }
-    var Text = intl.textComponent || React.Fragment;
-    return React.createElement(Text, null, formattedValue);
+    var Text = intl.textComponent || React__namespace.Fragment;
+    return React__namespace.createElement(Text, null, formattedValue);
   };
   Component.displayName = DisplayName[name];
   return Component;
@@ -4533,7 +4551,7 @@ var formatMessage = function(config, formatters, descriptor, rawValues) {
     values
   ], rest, false));
   if (Array.isArray(chunks)) {
-    return React.Children.toArray(chunks);
+    return React__namespace.Children.toArray(chunks);
   }
   return chunks;
 };
@@ -4606,12 +4624,12 @@ var IntlProvider = (
     };
     IntlProvider2.prototype.render = function() {
       invariantIntlContext(this.state.intl);
-      return React.createElement(Provider, { value: this.state.intl }, this.props.children);
+      return React__namespace.createElement(Provider, { value: this.state.intl }, this.props.children);
     };
     IntlProvider2.displayName = "IntlProvider";
     IntlProvider2.defaultProps = DEFAULT_INTL_CONFIG;
     return IntlProvider2;
-  })(React.PureComponent)
+  })(React__namespace.PureComponent)
 );
 createFormattedComponent("formatDate");
 createFormattedComponent("formatTime");
@@ -4988,8 +5006,8 @@ const AssetOptimizationLabel = ({ preference }) => {
   if (!label) {
     return null;
   }
-  return /* @__PURE__ */ jsx(Box, { paddingTop: 2, "data-optimizer-mode-label": "true", children: /* @__PURE__ */ jsxs(
-    Flex,
+  return /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingTop: 2, "data-optimizer-mode-label": "true", children: /* @__PURE__ */ jsxRuntime.jsxs(
+    designSystem.Flex,
     {
       alignItems: "center",
       gap: 2,
@@ -5000,8 +5018,8 @@ const AssetOptimizationLabel = ({ preference }) => {
       hasRadius: true,
       background: "neutral150",
       children: [
-        /* @__PURE__ */ jsx(Sparkle, { width: "12px", height: "12px", fill: "currentColor" }),
-        /* @__PURE__ */ jsx(Typography, { variant: "pi", fontWeight: "semiBold", textColor: "primary600", children: label })
+        /* @__PURE__ */ jsxRuntime.jsx(icons.Sparkle, { width: "12px", height: "12px", fill: "currentColor" }),
+        /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", fontWeight: "semiBold", textColor: "primary600", children: label })
       ]
     }
   ) });
@@ -5013,16 +5031,16 @@ const OptimizationChoicePicker = ({
   disabled = false
 }) => {
   const { formatMessage: formatMessage2 } = useIntl();
-  return /* @__PURE__ */ jsx(Field.Root, { name: "optimizationChoice", children: /* @__PURE__ */ jsx(
-    Radio.Group,
+  return /* @__PURE__ */ jsxRuntime.jsx(designSystem.Field.Root, { name: "optimizationChoice", children: /* @__PURE__ */ jsxRuntime.jsx(
+    designSystem.Radio.Group,
     {
       value,
       onValueChange: (nextValue) => onChange(nextValue),
       disabled,
-      children: /* @__PURE__ */ jsx(Flex, { direction: "column", gap: 3, alignItems: "stretch", children: CHOICES.map((choice) => {
+      children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Flex, { direction: "column", gap: 3, alignItems: "stretch", children: CHOICES.map((choice) => {
         const selected = value === choice;
-        return /* @__PURE__ */ jsxs(
-          Box,
+        return /* @__PURE__ */ jsxRuntime.jsxs(
+          designSystem.Box,
           {
             padding: 4,
             hasRadius: true,
@@ -5034,8 +5052,8 @@ const OptimizationChoicePicker = ({
             },
             style: { cursor: disabled ? "not-allowed" : "pointer" },
             children: [
-              /* @__PURE__ */ jsx(Radio.Item, { value: choice, id: `optimizer-choice-${choice}`, children: formatMessage2({ id: getTranslationKey(`choice.${choice}`) }) }),
-              /* @__PURE__ */ jsx(Box, { paddingLeft: 6, paddingTop: 1, style: { pointerEvents: "none" }, children: /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral600", children: formatMessage2({ id: getTranslationKey(`choice.${choice}.description`) }) }) })
+              /* @__PURE__ */ jsxRuntime.jsx(designSystem.Radio.Item, { value: choice, id: `optimizer-choice-${choice}`, children: formatMessage2({ id: getTranslationKey(`choice.${choice}`) }) }),
+              /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { paddingLeft: 6, paddingTop: 1, style: { pointerEvents: "none" }, children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral600", children: formatMessage2({ id: getTranslationKey(`choice.${choice}.description`) }) }) })
             ]
           },
           choice
@@ -5077,8 +5095,8 @@ const QualityInputItem = ({
   disabled,
   onCommit
 }) => {
-  const [inputValue, setInputValue] = useState(String(value));
-  useEffect(() => {
+  const [inputValue, setInputValue] = React.useState(String(value));
+  React.useEffect(() => {
     setInputValue(String(value));
   }, [value]);
   const handleChange = (e) => {
@@ -5104,10 +5122,10 @@ const QualityInputItem = ({
       onCommit(next);
     }
   };
-  return /* @__PURE__ */ jsx(Grid.Item, { col: 6, xs: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsxs(Field.Root, { name, children: [
-    /* @__PURE__ */ jsx(Field.Label, { children: label }),
-    /* @__PURE__ */ jsx(
-      TextInput,
+  return /* @__PURE__ */ jsxRuntime.jsx(designSystem.Grid.Item, { col: 6, xs: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Field.Root, { name, children: [
+    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Field.Label, { children: label }),
+    /* @__PURE__ */ jsxRuntime.jsx(
+      designSystem.TextInput,
       {
         type: "number",
         min,
@@ -5128,8 +5146,8 @@ const OptimizationQualityFields = ({
   namePrefix = ""
 }) => {
   const { formatMessage: formatMessage2 } = useIntl();
-  return /* @__PURE__ */ jsxs(Fragment, { children: [
-    fields.includes("webp") && /* @__PURE__ */ jsx(
+  return /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+    fields.includes("webp") && /* @__PURE__ */ jsxRuntime.jsx(
       QualityInputItem,
       {
         name: `${namePrefix}webpQuality`,
@@ -5144,7 +5162,7 @@ const OptimizationQualityFields = ({
         onCommit: (webpQuality) => onChange({ webpQuality })
       }
     ),
-    fields.includes("jpeg") && /* @__PURE__ */ jsx(
+    fields.includes("jpeg") && /* @__PURE__ */ jsxRuntime.jsx(
       QualityInputItem,
       {
         name: `${namePrefix}jpegQuality`,
@@ -5159,7 +5177,7 @@ const OptimizationQualityFields = ({
         onCommit: (jpegQuality) => onChange({ jpegQuality })
       }
     ),
-    fields.includes("png") && /* @__PURE__ */ jsx(
+    fields.includes("png") && /* @__PURE__ */ jsxRuntime.jsx(
       QualityInputItem,
       {
         name: `${namePrefix}pngCompression`,
@@ -5185,12 +5203,12 @@ const OptimizationResizeFields = ({
   namePrefix = ""
 }) => {
   const { formatMessage: formatMessage2 } = useIntl();
-  const [widthInput, setWidthInput] = useState(String(value.maxWidth));
-  const [heightInput, setHeightInput] = useState(String(value.maxHeight));
-  useEffect(() => {
+  const [widthInput, setWidthInput] = React.useState(String(value.maxWidth));
+  const [heightInput, setHeightInput] = React.useState(String(value.maxHeight));
+  React.useEffect(() => {
     setWidthInput(String(value.maxWidth));
   }, [value.maxWidth]);
-  useEffect(() => {
+  React.useEffect(() => {
     setHeightInput(String(value.maxHeight));
   }, [value.maxHeight]);
   const aspectRatio = sourceWidth && sourceHeight && sourceHeight > 0 ? sourceWidth / sourceHeight : null;
@@ -5254,18 +5272,18 @@ const OptimizationResizeFields = ({
     setHeightInput(String(nextHeight));
     commitHeight(nextHeight);
   };
-  return /* @__PURE__ */ jsxs(Fragment, { children: [
-    /* @__PURE__ */ jsx(Grid.Item, { col: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsx(Typography, { variant: "pi", fontWeight: "bold", textColor: "neutral800", children: formatMessage2({
+  return /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Grid.Item, { col: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", fontWeight: "bold", textColor: "neutral800", children: formatMessage2({
       id: getTranslationKey("settings.resize.title"),
       defaultMessage: "Output dimensions"
     }) }) }),
-    /* @__PURE__ */ jsx(Grid.Item, { col: 6, xs: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsxs(Field.Root, { name: `${namePrefix}maxWidth`, children: [
-      /* @__PURE__ */ jsx(Field.Label, { children: formatMessage2({
+    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Grid.Item, { col: 6, xs: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Field.Root, { name: `${namePrefix}maxWidth`, children: [
+      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Field.Label, { children: formatMessage2({
         id: getTranslationKey("settings.resize.width"),
         defaultMessage: "Width (px)"
       }) }),
-      /* @__PURE__ */ jsx(
-        TextInput,
+      /* @__PURE__ */ jsxRuntime.jsx(
+        designSystem.TextInput,
         {
           type: "number",
           min: 1,
@@ -5276,13 +5294,13 @@ const OptimizationResizeFields = ({
         }
       )
     ] }) }),
-    /* @__PURE__ */ jsx(Grid.Item, { col: 6, xs: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsxs(Field.Root, { name: `${namePrefix}maxHeight`, children: [
-      /* @__PURE__ */ jsx(Field.Label, { children: formatMessage2({
+    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Grid.Item, { col: 6, xs: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Field.Root, { name: `${namePrefix}maxHeight`, children: [
+      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Field.Label, { children: formatMessage2({
         id: getTranslationKey("settings.resize.height"),
         defaultMessage: "Height (px)"
       }) }),
-      /* @__PURE__ */ jsx(
-        TextInput,
+      /* @__PURE__ */ jsxRuntime.jsx(
+        designSystem.TextInput,
         {
           type: "number",
           min: 1,
@@ -5293,7 +5311,7 @@ const OptimizationResizeFields = ({
         }
       )
     ] }) }),
-    /* @__PURE__ */ jsx(Grid.Item, { col: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral600", children: formatMessage2({
+    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Grid.Item, { col: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral600", children: formatMessage2({
       id: getTranslationKey("settings.resize.hint"),
       defaultMessage: "Defaults to the original image size. Change either value to resize; the other updates to keep aspect ratio."
     }) }) })
@@ -5313,26 +5331,26 @@ const OptimizationCustomForm = ({
     onChange({ ...value, ...patch });
   };
   const qualityFields = getQualityFieldsForMode(value.mode, assetName);
-  return /* @__PURE__ */ jsxs(Grid.Root, { gap: 4, children: [
-    /* @__PURE__ */ jsx(Grid.Item, { col: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsxs(Field.Root, { name: "customMode", children: [
-      /* @__PURE__ */ jsx(Field.Label, { children: formatMessage2({
+  return /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Grid.Root, { gap: 4, children: [
+    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Grid.Item, { col: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Field.Root, { name: "customMode", children: [
+      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Field.Label, { children: formatMessage2({
         id: getTranslationKey("settings.global.defaultMode"),
         defaultMessage: "Optimization format"
       }) }),
-      /* @__PURE__ */ jsx(
-        SingleSelect,
+      /* @__PURE__ */ jsxRuntime.jsx(
+        designSystem.SingleSelect,
         {
           value: value.mode,
           onChange: (mode) => update({ mode }),
           disabled,
-          children: MODES.map((mode) => /* @__PURE__ */ jsx(SingleSelectOption, { value: mode, children: formatMessage2({
+          children: MODES.map((mode) => /* @__PURE__ */ jsxRuntime.jsx(designSystem.SingleSelectOption, { value: mode, children: formatMessage2({
             id: getTranslationKey(`settings.mode.${mode}`),
             defaultMessage: mode
           }) }, mode))
         }
       )
     ] }) }),
-    /* @__PURE__ */ jsx(
+    /* @__PURE__ */ jsxRuntime.jsx(
       OptimizationQualityFields,
       {
         value,
@@ -5342,7 +5360,7 @@ const OptimizationCustomForm = ({
         namePrefix: "custom"
       }
     ),
-    /* @__PURE__ */ jsx(
+    /* @__PURE__ */ jsxRuntime.jsx(
       OptimizationResizeFields,
       {
         value,
@@ -5360,12 +5378,12 @@ const stopEventPropagation = (event) => {
 };
 const UploadEnhancerBridge = () => {
   const { formatMessage: formatMessage2 } = useIntl();
-  const cards2 = useSyncExternalStore(subscribeUploadAssets, getUploadAssetCards);
-  const editingAssetId2 = useSyncExternalStore(subscribeUploadAssets, getEditingAssetId);
-  const draftPreference2 = useSyncExternalStore(subscribeUploadAssets, getDraftPreference);
-  const dialogElement2 = useSyncExternalStore(subscribeUploadAssets, getUploadDialogElement);
+  const cards2 = React.useSyncExternalStore(subscribeUploadAssets, getUploadAssetCards);
+  const editingAssetId2 = React.useSyncExternalStore(subscribeUploadAssets, getEditingAssetId);
+  const draftPreference2 = React.useSyncExternalStore(subscribeUploadAssets, getDraftPreference);
+  const dialogElement2 = React.useSyncExternalStore(subscribeUploadAssets, getUploadDialogElement);
   const editingCard = cards2.find((card) => card.assetId === editingAssetId2);
-  useEffect(() => {
+  React.useEffect(() => {
     if (!dialogElement2 || !editingAssetId2) {
       return;
     }
@@ -5375,8 +5393,8 @@ const UploadEnhancerBridge = () => {
       dialogElement2.style.overflow = previousOverflow;
     };
   }, [dialogElement2, editingAssetId2]);
-  const editorPanel = editingAssetId2 && dialogElement2 ? /* @__PURE__ */ jsxs(
-    Box,
+  const editorPanel = editingAssetId2 && dialogElement2 ? /* @__PURE__ */ jsxRuntime.jsxs(
+    designSystem.Box,
     {
       position: "fixed",
       top: 0,
@@ -5388,8 +5406,8 @@ const UploadEnhancerBridge = () => {
       onMouseDown: stopEventPropagation,
       onClick: stopEventPropagation,
       children: [
-        /* @__PURE__ */ jsx(
-          Box,
+        /* @__PURE__ */ jsxRuntime.jsx(
+          designSystem.Box,
           {
             position: "absolute",
             top: 0,
@@ -5401,8 +5419,8 @@ const UploadEnhancerBridge = () => {
             onClick: closeAssetEditor
           }
         ),
-        /* @__PURE__ */ jsxs(
-          Flex,
+        /* @__PURE__ */ jsxRuntime.jsxs(
+          designSystem.Flex,
           {
             direction: "column",
             alignItems: "stretch",
@@ -5420,8 +5438,8 @@ const UploadEnhancerBridge = () => {
               zIndex: 11
             },
             children: [
-              /* @__PURE__ */ jsxs(
-                Flex,
+              /* @__PURE__ */ jsxRuntime.jsxs(
+                designSystem.Flex,
                 {
                   tag: "header",
                   padding: 4,
@@ -5434,28 +5452,28 @@ const UploadEnhancerBridge = () => {
                   borderWidth: "0 0 1px",
                   borderStyle: "solid",
                   children: [
-                    /* @__PURE__ */ jsx(Typography, { variant: "omega", fontWeight: "bold", textColor: "neutral800", children: formatMessage2({ id: getTranslationKey("upload.modal.title") }) }),
-                    /* @__PURE__ */ jsx(
-                      IconButton,
+                    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "omega", fontWeight: "bold", textColor: "neutral800", children: formatMessage2({ id: getTranslationKey("upload.modal.title") }) }),
+                    /* @__PURE__ */ jsxRuntime.jsx(
+                      designSystem.IconButton,
                       {
                         label: formatMessage2({ id: getTranslationKey("upload.modal.cancel") }),
                         onClick: closeAssetEditor,
-                        children: /* @__PURE__ */ jsx(Cross, {})
+                        children: /* @__PURE__ */ jsxRuntime.jsx(icons.Cross, {})
                       }
                     )
                   ]
                 }
               ),
-              /* @__PURE__ */ jsx(Box, { padding: 7, style: { overflow: "auto" }, children: /* @__PURE__ */ jsxs(Flex, { direction: "column", alignItems: "stretch", gap: 5, children: [
-                editingCard?.assetName && /* @__PURE__ */ jsx(Typography, { variant: "pi", textColor: "neutral600", children: editingCard.assetName }),
-                /* @__PURE__ */ jsx(
+              /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { padding: 7, style: { overflow: "auto" }, children: /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Flex, { direction: "column", alignItems: "stretch", gap: 5, children: [
+                editingCard?.assetName && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", textColor: "neutral600", children: editingCard.assetName }),
+                /* @__PURE__ */ jsxRuntime.jsx(
                   OptimizationChoicePicker,
                   {
                     value: draftPreference2.choice,
                     onChange: setDraftChoice
                   }
                 ),
-                draftPreference2.choice === "custom" && /* @__PURE__ */ jsx(Box, { background: "neutral100", padding: 5, hasRadius: true, children: /* @__PURE__ */ jsx(
+                draftPreference2.choice === "custom" && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Box, { background: "neutral100", padding: 5, hasRadius: true, children: /* @__PURE__ */ jsxRuntime.jsx(
                   OptimizationCustomForm,
                   {
                     value: draftPreference2.custom ?? (editingAssetId2 ? createCustomForAsset(editingAssetId2) : createCustomFromGlobal()),
@@ -5466,8 +5484,8 @@ const UploadEnhancerBridge = () => {
                   }
                 ) })
               ] }) }),
-              /* @__PURE__ */ jsxs(
-                Flex,
+              /* @__PURE__ */ jsxRuntime.jsxs(
+                designSystem.Flex,
                 {
                   tag: "footer",
                   gap: 2,
@@ -5480,8 +5498,8 @@ const UploadEnhancerBridge = () => {
                   borderWidth: "1px 0 0",
                   borderStyle: "solid",
                   children: [
-                    /* @__PURE__ */ jsx(Button, { onClick: closeAssetEditor, variant: "tertiary", children: formatMessage2({ id: getTranslationKey("upload.modal.cancel") }) }),
-                    /* @__PURE__ */ jsx(Button, { onClick: saveAssetEditor, children: formatMessage2({ id: getTranslationKey("upload.modal.save") }) })
+                    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { onClick: closeAssetEditor, variant: "tertiary", children: formatMessage2({ id: getTranslationKey("upload.modal.cancel") }) }),
+                    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Button, { onClick: saveAssetEditor, children: formatMessage2({ id: getTranslationKey("upload.modal.save") }) })
                   ]
                 }
               )
@@ -5491,11 +5509,11 @@ const UploadEnhancerBridge = () => {
       ]
     }
   ) : null;
-  return /* @__PURE__ */ jsxs(Fragment, { children: [
-    cards2.map((card) => /* @__PURE__ */ jsxs(React__default.Fragment, { children: [
-      createPortal(
-        /* @__PURE__ */ jsx(
-          IconButton,
+  return /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
+    cards2.map((card) => /* @__PURE__ */ jsxRuntime.jsxs(React__namespace.default.Fragment, { children: [
+      reactDom.createPortal(
+        /* @__PURE__ */ jsxRuntime.jsx(
+          designSystem.IconButton,
           {
             label: formatMessage2({ id: getTranslationKey("upload.button.label") }),
             onClick: (event) => {
@@ -5504,17 +5522,17 @@ const UploadEnhancerBridge = () => {
               openAssetEditor(card.assetId);
             },
             variant: isPreferenceCustomized(card.assetId) ? "default" : "ghost",
-            children: /* @__PURE__ */ jsx(Sparkle, {})
+            children: /* @__PURE__ */ jsxRuntime.jsx(icons.Sparkle, {})
           }
         ),
         card.actionsContainer
       ),
-      card.footerHost ? createPortal(
-        /* @__PURE__ */ jsx(AssetOptimizationLabel, { preference: getAssetPreference(card.assetId) }),
+      card.footerHost ? reactDom.createPortal(
+        /* @__PURE__ */ jsxRuntime.jsx(AssetOptimizationLabel, { preference: getAssetPreference(card.assetId) }),
         card.footerHost
       ) : null
     ] }, card.assetId)),
-    editorPanel && dialogElement2 ? createPortal(editorPanel, dialogElement2) : null
+    editorPanel && dialogElement2 ? reactDom.createPortal(editorPanel, dialogElement2) : null
   ] });
 };
 const enTranslations = {
@@ -5633,22 +5651,22 @@ const getActiveLocale = () => {
 const getTheme = () => {
   const stored = localStorage.getItem(THEME_KEY);
   if (stored === "dark") {
-    return darkTheme;
+    return designSystem.darkTheme;
   }
   if (stored === "system" || !stored) {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? darkTheme : lightTheme;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? designSystem.darkTheme : designSystem.lightTheme;
   }
-  return lightTheme;
+  return designSystem.lightTheme;
 };
 const BridgeProviders = ({ children }) => {
-  const editingAssetId2 = useSyncExternalStore(subscribeUploadAssets, getEditingAssetId);
-  const [theme, setTheme] = React__default.useState(getTheme);
-  const [locale, setLocale] = React__default.useState(getActiveLocale);
-  React__default.useEffect(() => {
+  const editingAssetId2 = React.useSyncExternalStore(subscribeUploadAssets, getEditingAssetId);
+  const [theme, setTheme] = React__namespace.default.useState(getTheme);
+  const [locale, setLocale] = React__namespace.default.useState(getActiveLocale);
+  React__namespace.default.useEffect(() => {
     setTheme(getTheme());
     setLocale(getActiveLocale());
   }, [editingAssetId2]);
-  React__default.useEffect(() => {
+  React__namespace.default.useEffect(() => {
     const syncState = () => {
       setTheme(getTheme());
       setLocale(getActiveLocale());
@@ -5662,9 +5680,9 @@ const BridgeProviders = ({ children }) => {
     };
   }, []);
   const messages = MESSAGES_BY_LOCALE[locale] ?? MESSAGES_BY_LOCALE.en;
-  return /* @__PURE__ */ jsx(IntlProvider, { locale, messages, defaultLocale: "en", children: /* @__PURE__ */ jsx(DesignSystemProvider, { locale, theme, children }) });
+  return /* @__PURE__ */ jsxRuntime.jsx(IntlProvider, { locale, messages, defaultLocale: "en", children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.DesignSystemProvider, { locale, theme, children }) });
 };
-const UploadEnhancerRoot = () => /* @__PURE__ */ jsx(BridgeProviders, { children: /* @__PURE__ */ jsx(UploadEnhancerBridge, {}) });
+const UploadEnhancerRoot = () => /* @__PURE__ */ jsxRuntime.jsx(BridgeProviders, { children: /* @__PURE__ */ jsxRuntime.jsx(UploadEnhancerBridge, {}) });
 let bridgeRoot = null;
 let bridgeHost = null;
 let mountedDialog = null;
@@ -5748,6 +5766,7 @@ const isPendingLocalCard = (card) => {
   }
   return nativeButtons.length >= 2;
 };
+const ASSET_CARD_SELECTOR = 'article[role="button"]';
 const isUploadPendingModal = (root) => {
   if (root.querySelector('[role="tablist"]')) {
     return false;
@@ -5755,7 +5774,7 @@ const isUploadPendingModal = (root) => {
   if (root.querySelector('article input[type="checkbox"], article [role="checkbox"]')) {
     return false;
   }
-  const candidateCards = root.querySelectorAll('article [role="button"]');
+  const candidateCards = root.querySelectorAll(ASSET_CARD_SELECTOR);
   return [...candidateCards].some(isPendingLocalCard);
 };
 const isLikelyImageCard = (card) => {
@@ -5879,8 +5898,8 @@ const ensureBridge = (dialog) => {
   bridgeHost.id = "image-optimizer-upload-bridge";
   bridgeHost.style.cssText = "display:none;";
   dialog.appendChild(bridgeHost);
-  bridgeRoot = createRoot(bridgeHost);
-  bridgeRoot.render(React__default.createElement(UploadEnhancerRoot));
+  bridgeRoot = client.createRoot(bridgeHost);
+  bridgeRoot.render(React__namespace.default.createElement(UploadEnhancerRoot));
 };
 const ensureActionHost = (actionsContainer, editButton, assetId) => {
   const selector = `[data-optimizer-action-host="${assetId}"]`;
@@ -5910,7 +5929,7 @@ const ensureFooterHost = (cardElement, assetId) => {
 const collectCards = (dialog) => {
   const entries = [];
   const seenCards = /* @__PURE__ */ new Set();
-  dialog.querySelectorAll('article [role="button"]').forEach((card) => {
+  dialog.querySelectorAll(ASSET_CARD_SELECTOR).forEach((card) => {
     if (seenCards.has(card) || !isPendingLocalCard(card)) {
       return;
     }
@@ -6010,7 +6029,7 @@ const index = {
         id: getTranslationKey("settings.section-label"),
         defaultMessage: "Image Optimizer"
       },
-      Component: () => import("./SettingsPage-B2lbe6FE.mjs").then((mod) => ({
+      Component: () => Promise.resolve().then(() => require("./SettingsPage-DQxE0o2y.js")).then((mod) => ({
         default: mod.ProtectedSettingsPage
       })),
       permissions: [{ action: "plugin::image-optimizer.settings.read", subject: null }]
@@ -6041,11 +6060,9 @@ const index = {
     return importedTrads;
   }
 };
-export {
-  OptimizationQualityFields as O,
-  PLUGIN_ID as P,
-  getTranslationKey as g,
-  index as i,
-  setGlobalSettings as s,
-  useIntl as u
-};
+exports.OptimizationQualityFields = OptimizationQualityFields;
+exports.PLUGIN_ID = PLUGIN_ID;
+exports.getTranslationKey = getTranslationKey;
+exports.index = index;
+exports.setGlobalSettings = setGlobalSettings;
+exports.useIntl = useIntl;

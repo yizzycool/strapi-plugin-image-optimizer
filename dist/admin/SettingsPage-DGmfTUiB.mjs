@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Typography, Button, Flex, Box, Grid, Field, SingleSelect, SingleSelectOption } from "@strapi/design-system";
 import { Check } from "@strapi/icons";
 import { Page, useFetchClient, useNotification, useRBAC, Layouts } from "@strapi/strapi/admin";
-import { u as useIntl, g as getTranslationKey, O as OptimizationQualityFields, P as PLUGIN_ID, s as setGlobalSettings } from "./index-XbFo1PYV.mjs";
+import { u as useIntl, g as getTranslationKey, O as OptimizationQualityFields, P as PLUGIN_ID, s as setGlobalSettings } from "./index-BYNd9ke1.mjs";
 const SETTINGS_READ = [{ action: "plugin::image-optimizer.settings.read", subject: null }];
 const SETTINGS_UPDATE = [{ action: "plugin::image-optimizer.settings.update", subject: null }];
 const CHOICES = ["original", "global", "custom"];
