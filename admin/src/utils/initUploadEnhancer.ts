@@ -122,6 +122,8 @@ const isPendingLocalCard = (card: Element) => {
   return nativeButtons.length >= 2;
 };
 
+const ASSET_CARD_SELECTOR = 'article[role="button"]';
+
 const isUploadPendingModal = (root: Element) => {
   // Exclude Media Picker (AssetDialog) which uses tabs ("Browse" / "Selected").
   if (root.querySelector('[role="tablist"]')) {
@@ -133,7 +135,7 @@ const isUploadPendingModal = (root: Element) => {
     return false;
   }
 
-  const candidateCards = root.querySelectorAll('article [role="button"]');
+  const candidateCards = root.querySelectorAll(ASSET_CARD_SELECTOR);
   return [...candidateCards].some(isPendingLocalCard);
 };
 
@@ -332,7 +334,7 @@ const collectCards = (dialog: Element): UploadAssetEntry[] => {
   const entries: UploadAssetEntry[] = [];
   const seenCards = new Set<Element>();
 
-  dialog.querySelectorAll('article [role="button"]').forEach((card) => {
+  dialog.querySelectorAll(ASSET_CARD_SELECTOR).forEach((card) => {
     if (seenCards.has(card) || !isPendingLocalCard(card)) {
       return;
     }
