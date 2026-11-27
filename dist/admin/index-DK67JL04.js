@@ -4882,15 +4882,26 @@ const buildFileInfoPayload = (parsed, preference) => {
   delete payload.optimizationMode;
   return payload;
 };
+const parseFileInfo = (raw) => {
+  if (!raw) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+};
 const isMediaUploadRequest = (url, method) => {
   if (method?.toUpperCase() !== "POST") {
     return false;
   }
   try {
     const pathname = new URL(url, window.location.origin).pathname.replace(/\/+$/, "") || "/";
-    return pathname === "/upload";
+    return pathname === "/upload" || pathname.endsWith("/upload");
   } catch {
-    return url.includes("/upload") && !url.includes("/upload/actions/");
+    return /(?:^|\/)upload(?:[?#]|$)/.test(url);
   }
 };
 const patchUploadFetch = () => {
@@ -4922,7 +4933,7 @@ const patchUploadFetch = () => {
       const preferencesPayload = [];
       files.forEach((file, index2) => {
         nextFormData.append("files", file);
-        const parsed = JSON.parse(fileInfos[index2] ?? "{}");
+        const parsed = parseFileInfo(fileInfos[index2]);
         const card = findCardForFile(file, parsed, index2, files.length);
         let assetId = parsed.optimizerAssetId;
         if (!assetId && card) {
@@ -5074,6 +5085,59 @@ const getQualityFieldsForMode = (mode, assetName) => {
   }
   return ["jpeg"];
 };
+const clampInt = (raw, min, max) => Math.min(max, Math.max(min, Math.round(raw)));
+const QualityInputItem = ({
+  name,
+  label,
+  value,
+  min,
+  max,
+  disabled,
+  onCommit
+}) => {
+  const [inputValue, setInputValue] = React.useState(String(value));
+  React.useEffect(() => {
+    setInputValue(String(value));
+  }, [value]);
+  const handleChange = (e) => {
+    const raw = e.target.value;
+    setInputValue(raw);
+    if (raw.trim() === "") {
+      return;
+    }
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed >= min && parsed <= max) {
+      onCommit(Math.round(parsed));
+    }
+  };
+  const handleBlur = () => {
+    if (inputValue.trim() === "") {
+      setInputValue(String(value));
+      return;
+    }
+    const parsed = Number(inputValue);
+    const next = Number.isFinite(parsed) ? clampInt(parsed, min, max) : value;
+    setInputValue(String(next));
+    if (next !== value) {
+      onCommit(next);
+    }
+  };
+  return /* @__PURE__ */ jsxRuntime.jsx(designSystem.Grid.Item, { col: 6, xs: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Field.Root, { name, children: [
+    /* @__PURE__ */ jsxRuntime.jsx(designSystem.Field.Label, { children: label }),
+    /* @__PURE__ */ jsxRuntime.jsx(
+      designSystem.TextInput,
+      {
+        type: "number",
+        min,
+        max,
+        value: inputValue,
+        onChange: handleChange,
+        onBlur: handleBlur,
+        disabled
+      }
+    )
+  ] }) });
+};
 const OptimizationQualityFields = ({
   value,
   fields,
@@ -5083,57 +5147,51 @@ const OptimizationQualityFields = ({
 }) => {
   const { formatMessage: formatMessage2 } = useIntl();
   return /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
-    fields.includes("webp") && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Grid.Item, { col: 6, xs: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Field.Root, { name: `${namePrefix}webpQuality`, children: [
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Field.Label, { children: formatMessage2({
-        id: getTranslationKey("settings.global.webpQuality"),
-        defaultMessage: "WebP quality"
-      }) }),
-      /* @__PURE__ */ jsxRuntime.jsx(
-        designSystem.TextInput,
-        {
-          type: "number",
-          min: 1,
-          max: 100,
-          value: value.webpQuality,
-          onChange: (e) => onChange({ webpQuality: Number(e.target.value) }),
-          disabled
-        }
-      )
-    ] }) }),
-    fields.includes("jpeg") && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Grid.Item, { col: 6, xs: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Field.Root, { name: `${namePrefix}jpegQuality`, children: [
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Field.Label, { children: formatMessage2({
-        id: getTranslationKey("settings.global.jpegQuality"),
-        defaultMessage: "JPEG quality"
-      }) }),
-      /* @__PURE__ */ jsxRuntime.jsx(
-        designSystem.TextInput,
-        {
-          type: "number",
-          min: 1,
-          max: 100,
-          value: value.jpegQuality,
-          onChange: (e) => onChange({ jpegQuality: Number(e.target.value) }),
-          disabled
-        }
-      )
-    ] }) }),
-    fields.includes("png") && /* @__PURE__ */ jsxRuntime.jsx(designSystem.Grid.Item, { col: 6, xs: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsxRuntime.jsxs(designSystem.Field.Root, { name: `${namePrefix}pngCompression`, children: [
-      /* @__PURE__ */ jsxRuntime.jsx(designSystem.Field.Label, { children: formatMessage2({
-        id: getTranslationKey("settings.global.pngCompression"),
-        defaultMessage: "PNG compression level"
-      }) }),
-      /* @__PURE__ */ jsxRuntime.jsx(
-        designSystem.TextInput,
-        {
-          type: "number",
-          min: 0,
-          max: 9,
-          value: value.pngCompressionLevel,
-          onChange: (e) => onChange({ pngCompressionLevel: Number(e.target.value) }),
-          disabled
-        }
-      )
-    ] }) })
+    fields.includes("webp") && /* @__PURE__ */ jsxRuntime.jsx(
+      QualityInputItem,
+      {
+        name: `${namePrefix}webpQuality`,
+        label: formatMessage2({
+          id: getTranslationKey("settings.global.webpQuality"),
+          defaultMessage: "WebP quality"
+        }),
+        value: value.webpQuality,
+        min: 1,
+        max: 100,
+        disabled,
+        onCommit: (webpQuality) => onChange({ webpQuality })
+      }
+    ),
+    fields.includes("jpeg") && /* @__PURE__ */ jsxRuntime.jsx(
+      QualityInputItem,
+      {
+        name: `${namePrefix}jpegQuality`,
+        label: formatMessage2({
+          id: getTranslationKey("settings.global.jpegQuality"),
+          defaultMessage: "JPEG quality"
+        }),
+        value: value.jpegQuality,
+        min: 1,
+        max: 100,
+        disabled,
+        onCommit: (jpegQuality) => onChange({ jpegQuality })
+      }
+    ),
+    fields.includes("png") && /* @__PURE__ */ jsxRuntime.jsx(
+      QualityInputItem,
+      {
+        name: `${namePrefix}pngCompression`,
+        label: formatMessage2({
+          id: getTranslationKey("settings.global.pngCompression"),
+          defaultMessage: "PNG compression level"
+        }),
+        value: value.pngCompressionLevel,
+        min: 0,
+        max: 9,
+        disabled,
+        onCommit: (pngCompressionLevel) => onChange({ pngCompressionLevel })
+      }
+    )
   ] });
 };
 const OptimizationResizeFields = ({
@@ -5145,9 +5203,16 @@ const OptimizationResizeFields = ({
   namePrefix = ""
 }) => {
   const { formatMessage: formatMessage2 } = useIntl();
+  const [widthInput, setWidthInput] = React.useState(String(value.maxWidth));
+  const [heightInput, setHeightInput] = React.useState(String(value.maxHeight));
+  React.useEffect(() => {
+    setWidthInput(String(value.maxWidth));
+  }, [value.maxWidth]);
+  React.useEffect(() => {
+    setHeightInput(String(value.maxHeight));
+  }, [value.maxHeight]);
   const aspectRatio = sourceWidth && sourceHeight && sourceHeight > 0 ? sourceWidth / sourceHeight : null;
-  const handleWidthChange = (rawValue) => {
-    const nextWidth = Math.max(1, Number(rawValue) || 1);
+  const commitWidth = (nextWidth) => {
     if (!aspectRatio) {
       onChange({ maxWidth: nextWidth });
       return;
@@ -5157,8 +5222,7 @@ const OptimizationResizeFields = ({
       maxHeight: Math.max(1, Math.round(nextWidth / aspectRatio))
     });
   };
-  const handleHeightChange = (rawValue) => {
-    const nextHeight = Math.max(1, Number(rawValue) || 1);
+  const commitHeight = (nextHeight) => {
     if (!aspectRatio) {
       onChange({ maxHeight: nextHeight });
       return;
@@ -5167,6 +5231,46 @@ const OptimizationResizeFields = ({
       maxHeight: nextHeight,
       maxWidth: Math.max(1, Math.round(nextHeight * aspectRatio))
     });
+  };
+  const handleWidthChange = (rawValue) => {
+    setWidthInput(rawValue);
+    if (rawValue.trim() === "") {
+      return;
+    }
+    const parsed = Number(rawValue);
+    if (Number.isFinite(parsed) && parsed >= 1) {
+      commitWidth(Math.round(parsed));
+    }
+  };
+  const handleHeightChange = (rawValue) => {
+    setHeightInput(rawValue);
+    if (rawValue.trim() === "") {
+      return;
+    }
+    const parsed = Number(rawValue);
+    if (Number.isFinite(parsed) && parsed >= 1) {
+      commitHeight(Math.round(parsed));
+    }
+  };
+  const handleWidthBlur = () => {
+    if (widthInput.trim() === "") {
+      setWidthInput(String(value.maxWidth));
+      return;
+    }
+    const parsed = Number(widthInput);
+    const nextWidth = Number.isFinite(parsed) ? Math.max(1, Math.round(parsed)) : Math.max(1, value.maxWidth);
+    setWidthInput(String(nextWidth));
+    commitWidth(nextWidth);
+  };
+  const handleHeightBlur = () => {
+    if (heightInput.trim() === "") {
+      setHeightInput(String(value.maxHeight));
+      return;
+    }
+    const parsed = Number(heightInput);
+    const nextHeight = Number.isFinite(parsed) ? Math.max(1, Math.round(parsed)) : Math.max(1, value.maxHeight);
+    setHeightInput(String(nextHeight));
+    commitHeight(nextHeight);
   };
   return /* @__PURE__ */ jsxRuntime.jsxs(jsxRuntime.Fragment, { children: [
     /* @__PURE__ */ jsxRuntime.jsx(designSystem.Grid.Item, { col: 12, direction: "column", alignItems: "stretch", children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.Typography, { variant: "pi", fontWeight: "bold", textColor: "neutral800", children: formatMessage2({
@@ -5183,8 +5287,9 @@ const OptimizationResizeFields = ({
         {
           type: "number",
           min: 1,
-          value: value.maxWidth,
+          value: widthInput,
           onChange: (e) => handleWidthChange(e.target.value),
+          onBlur: handleWidthBlur,
           disabled
         }
       )
@@ -5199,8 +5304,9 @@ const OptimizationResizeFields = ({
         {
           type: "number",
           min: 1,
-          value: value.maxHeight,
+          value: heightInput,
           onChange: (e) => handleHeightChange(e.target.value),
+          onBlur: handleHeightBlur,
           disabled
         }
       )
@@ -5426,35 +5532,121 @@ const UploadEnhancerBridge = () => {
         card.footerHost
       ) : null
     ] }, card.assetId)),
-    editorPanel ? reactDom.createPortal(editorPanel, dialogElement2) : null
+    editorPanel && dialogElement2 ? reactDom.createPortal(editorPanel, dialogElement2) : null
   ] });
 };
+const enTranslations = {
+  "plugin.name": "Image Optimizer",
+  "settings.section-label": "Image Optimizer",
+  "settings.page.title": "Image Optimizer Settings",
+  "settings.page.description": "Configure global defaults used when uploading images. Each image can be overridden in the upload dialog.",
+  "settings.mode.webp": "Convert to WebP",
+  "settings.mode.webp.description": "JPEG and PNG files are converted to WebP format for significantly smaller file sizes.",
+  "settings.mode.compress": "Compress (keep format)",
+  "settings.mode.compress.description": "Keeps the original format while reducing quality to shrink file size.",
+  "settings.global.title": "Global settings",
+  "settings.global.description": "Default optimization mode and quality values for all uploads. Individual images can be changed in the Media Library upload dialog.",
+  "settings.global.defaultChoiceTitle": "Default upload choice",
+  "settings.global.defaultChoiceDescription": "Choose which option is pre-selected when opening the upload dialog for a new image.",
+  "settings.global.defaultChoice": "Default choice",
+  "settings.global.defaultChoiceHint": "This choice is applied automatically unless changed per image in the upload dialog.",
+  "settings.global.profileTitle": "Global optimization profile",
+  "settings.global.profileDescription": "Used when an image is set to Apply global settings, and as the starting values for Custom.",
+  "settings.global.defaultMode": "Optimization format",
+  "settings.global.defaultModeHint": "WebP converts the file; Compress keeps the original format with reduced quality.",
+  "settings.global.webpQuality": "WebP quality",
+  "settings.global.jpegQuality": "JPEG quality",
+  "settings.global.pngCompression": "PNG compression level",
+  "settings.resize.title": "Output dimensions",
+  "settings.resize.width": "Width (px)",
+  "settings.resize.height": "Height (px)",
+  "settings.resize.hint": "Defaults to the original image size. Change either value to resize; the other updates to keep aspect ratio.",
+  "settings.global.noPermission": "You do not have permission to view global Image Optimizer settings.",
+  "settings.save": "Save",
+  "settings.saved": "Settings saved",
+  "settings.error": "Failed to save settings",
+  "choice.original": "Keep original",
+  "choice.original.description": "No optimization is applied. The file is uploaded exactly as selected.",
+  "choice.global": "Apply global settings",
+  "choice.global.description": "Uses the global optimization profile configured in Settings.",
+  "choice.custom": "Custom",
+  "choice.custom.description": "Configure format and quality settings specifically for this image.",
+  "upload.optimization.label": "Optimization",
+  "upload.button.label": "Optimization settings",
+  "upload.modal.title": "Image optimization",
+  "upload.modal.save": "Save",
+  "upload.modal.cancel": "Cancel",
+  "upload.mode.footer.global": "Global: {mode}",
+  "upload.mode.footer.custom": "Custom: {mode}"
+};
+const en = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: enTranslations
+}, Symbol.toStringTag, { value: "Module" }));
+const trTranslations = {
+  "plugin.name": "Görsel Optimizasyon",
+  "settings.section-label": "Görsel Optimizasyon",
+  "settings.page.title": "Görsel Optimizasyon Ayarları",
+  "settings.page.description": "Görsel yüklerken kullanılacak genel varsayılanları buradan ayarlayın. Her görsel için yükleme penceresinde ayrı seçim yapılabilir.",
+  "settings.mode.webp": "WebP'ye dönüştür",
+  "settings.mode.webp.description": "JPEG ve PNG dosyaları WebP formatına çevrilir. Dosya boyutu önemli ölçüde küçülür.",
+  "settings.mode.compress": "Sıkıştır (orijinal format)",
+  "settings.mode.compress.description": "Görsel formatı korunur, kalite düşürülerek dosya boyutu azaltılır.",
+  "settings.global.title": "Genel ayarlar",
+  "settings.global.description": "Tüm yüklemeler için varsayılan optimizasyon modu ve kalite değerleri. Her görsel için Media Library yükleme penceresinde farklı seçim yapılabilir.",
+  "settings.global.defaultChoiceTitle": "Varsayılan yükleme seçimi",
+  "settings.global.defaultChoiceDescription": "Yeni bir görsel için yükleme penceresi açıldığında hangi seçeneğin önceden işaretli geleceğini belirler.",
+  "settings.global.defaultChoice": "Varsayılan seçim",
+  "settings.global.defaultChoiceHint": "Upload penceresinde görsel bazında değiştirilmedikçe bu seçim uygulanır.",
+  "settings.global.profileTitle": "Global optimizasyon profili",
+  "settings.global.profileDescription": "Global ayarı uygula seçildiğinde kullanılır; Özel seçeneğinin başlangıç değerlerini de belirler.",
+  "settings.global.defaultMode": "Optimizasyon formatı",
+  "settings.global.defaultModeHint": "WebP dosyayı dönüştürür; Sıkıştır orijinal formatı koruyarak kaliteyi düşürür.",
+  "settings.global.webpQuality": "WebP kalitesi",
+  "settings.global.jpegQuality": "JPEG kalitesi",
+  "settings.global.pngCompression": "PNG sıkıştırma seviyesi",
+  "settings.resize.title": "Çıktı boyutları",
+  "settings.resize.width": "Genişlik (px)",
+  "settings.resize.height": "Yükseklik (px)",
+  "settings.resize.hint": "Varsayılan olarak görselin orijinal boyutunu kullanır. Boyutlandırmak için değerlerden birini değiştirin; diğeri en-boy oranını koruyarak güncellenir.",
+  "settings.global.noPermission": "Genel Görsel Optimizasyon ayarlarını görüntüleme izniniz yok.",
+  "settings.save": "Kaydet",
+  "settings.saved": "Ayarlar kaydedildi",
+  "settings.error": "Ayarlar kaydedilemedi",
+  "choice.original": "Olduğu gibi bırak",
+  "choice.original.description": "Hiçbir optimizasyon uygulanmaz. Dosya seçildiği haliyle yüklenir.",
+  "choice.global": "Global ayarı uygula",
+  "choice.global.description": "Settings altındaki global optimizasyon profilini kullanır.",
+  "choice.custom": "Özel",
+  "choice.custom.description": "Bu görsel için format ve kalite ayarlarını ayrıca yapılandırın.",
+  "upload.optimization.label": "Optimizasyon",
+  "upload.button.label": "Optimizasyon ayarları",
+  "upload.modal.title": "Görsel optimizasyonu",
+  "upload.modal.save": "Kaydet",
+  "upload.modal.cancel": "İptal",
+  "upload.mode.footer.global": "Global: {mode}",
+  "upload.mode.footer.custom": "Özel: {mode}"
+};
+const tr = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+  __proto__: null,
+  default: trTranslations
+}, Symbol.toStringTag, { value: "Module" }));
 const THEME_KEY = "STRAPI_THEME";
-const enMessages = {
-  [`${PLUGIN_ID}.upload.button.label`]: "Optimization settings",
-  [`${PLUGIN_ID}.upload.modal.title`]: "Image optimization",
-  [`${PLUGIN_ID}.upload.modal.save`]: "Save",
-  [`${PLUGIN_ID}.upload.modal.cancel`]: "Cancel",
-  [`${PLUGIN_ID}.settings.mode.webp`]: "Convert to WebP",
-  [`${PLUGIN_ID}.settings.mode.webp.description`]: "JPEG and PNG files are converted to WebP format for significantly smaller file sizes.",
-  [`${PLUGIN_ID}.settings.mode.compress`]: "Compress (keep format)",
-  [`${PLUGIN_ID}.settings.mode.compress.description`]: "Keeps the original format while reducing quality to shrink file size.",
-  [`${PLUGIN_ID}.choice.original`]: "Keep original",
-  [`${PLUGIN_ID}.choice.original.description`]: "No optimization is applied. The file is uploaded exactly as selected.",
-  [`${PLUGIN_ID}.choice.global`]: "Apply global settings",
-  [`${PLUGIN_ID}.choice.global.description`]: "Uses the global optimization profile configured in Settings.",
-  [`${PLUGIN_ID}.choice.custom`]: "Custom",
-  [`${PLUGIN_ID}.choice.custom.description`]: "Configure format and quality settings specifically for this image.",
-  [`${PLUGIN_ID}.settings.global.defaultMode`]: "Optimization format",
-  [`${PLUGIN_ID}.settings.global.webpQuality`]: "WebP quality",
-  [`${PLUGIN_ID}.settings.global.jpegQuality`]: "JPEG quality",
-  [`${PLUGIN_ID}.settings.global.pngCompression`]: "PNG compression level",
-  [`${PLUGIN_ID}.settings.resize.title`]: "Output dimensions",
-  [`${PLUGIN_ID}.settings.resize.width`]: "Width (px)",
-  [`${PLUGIN_ID}.settings.resize.height`]: "Height (px)",
-  [`${PLUGIN_ID}.settings.resize.hint`]: "Defaults to the original image size. Change either value to resize; the other updates to keep aspect ratio.",
-  [`${PLUGIN_ID}.upload.mode.footer.global`]: "Global: {mode}",
-  [`${PLUGIN_ID}.upload.mode.footer.custom`]: "Custom: {mode}"
+const LANGUAGE_KEY = "strapi-admin-language";
+const prefixMessages = (trad) => Object.entries(trad).reduce((acc, [key, value]) => {
+  acc[`${PLUGIN_ID}.${key}`] = value;
+  return acc;
+}, {});
+const MESSAGES_BY_LOCALE = {
+  en: prefixMessages(enTranslations),
+  tr: prefixMessages(trTranslations)
+};
+const getActiveLocale = () => {
+  const stored = localStorage.getItem(LANGUAGE_KEY);
+  const raw = stored || document.documentElement.lang || "en";
+  const normalized = raw.toLowerCase();
+  const shortCode = normalized.split("-")[0];
+  return MESSAGES_BY_LOCALE[normalized] ? normalized : MESSAGES_BY_LOCALE[shortCode] ? shortCode : "en";
 };
 const getTheme = () => {
   const stored = localStorage.getItem(THEME_KEY);
@@ -5469,88 +5661,127 @@ const getTheme = () => {
 const BridgeProviders = ({ children }) => {
   const editingAssetId2 = React.useSyncExternalStore(subscribeUploadAssets, getEditingAssetId);
   const [theme, setTheme] = React__namespace.default.useState(getTheme);
+  const [locale, setLocale] = React__namespace.default.useState(getActiveLocale);
   React__namespace.default.useEffect(() => {
     setTheme(getTheme());
+    setLocale(getActiveLocale());
   }, [editingAssetId2]);
   React__namespace.default.useEffect(() => {
-    const syncTheme = () => setTheme(getTheme());
-    window.addEventListener("storage", syncTheme);
+    const syncState = () => {
+      setTheme(getTheme());
+      setLocale(getActiveLocale());
+    };
+    window.addEventListener("storage", syncState);
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    media.addEventListener("change", syncTheme);
+    media.addEventListener("change", syncState);
     return () => {
-      window.removeEventListener("storage", syncTheme);
-      media.removeEventListener("change", syncTheme);
+      window.removeEventListener("storage", syncState);
+      media.removeEventListener("change", syncState);
     };
   }, []);
-  return /* @__PURE__ */ jsxRuntime.jsx(IntlProvider, { locale: "en", messages: enMessages, defaultLocale: "en", children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.DesignSystemProvider, { locale: "en-GB", theme, children }) });
+  const messages = MESSAGES_BY_LOCALE[locale] ?? MESSAGES_BY_LOCALE.en;
+  return /* @__PURE__ */ jsxRuntime.jsx(IntlProvider, { locale, messages, defaultLocale: "en", children: /* @__PURE__ */ jsxRuntime.jsx(designSystem.DesignSystemProvider, { locale, theme, children }) });
 };
 const UploadEnhancerRoot = () => /* @__PURE__ */ jsxRuntime.jsx(BridgeProviders, { children: /* @__PURE__ */ jsxRuntime.jsx(UploadEnhancerBridge, {}) });
 let bridgeRoot = null;
 let bridgeHost = null;
 let mountedDialog = null;
 let started = false;
+let globalSettingsLoaded = false;
+let globalSettingsPromise = null;
+const parseStoredToken = (raw) => {
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed === "string" && parsed ? parsed : null;
+  } catch {
+    return raw;
+  }
+};
 const getAuthToken = () => {
-  const fromStorage = localStorage.getItem("jwtToken");
-  if (fromStorage) {
-    try {
-      return JSON.parse(fromStorage);
-    } catch {
-      return null;
-    }
+  const fromLocal = parseStoredToken(localStorage.getItem("jwtToken"));
+  if (fromLocal) {
+    return fromLocal;
+  }
+  const fromSession = parseStoredToken(sessionStorage.getItem("jwtToken"));
+  if (fromSession) {
+    return fromSession;
   }
   const match = document.cookie.match(/(?:^|;\s*)jwtToken=([^;]+)/);
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 };
 const loadGlobalSettings = async () => {
-  try {
-    const backendURL = window.strapi?.backendURL;
-    if (!backendURL) {
-      return;
-    }
-    const token = getAuthToken();
-    const headers = { Accept: "application/json" };
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-    const response = await fetch(`${backendURL}/image-optimizer/default-mode`, { headers });
-    if (!response.ok) {
-      return;
-    }
-    const data = await response.json();
-    setGlobalSettings({
-      defaultChoice: data.defaultChoice ?? "original",
-      defaultMode: data.defaultMode ?? "compress",
-      webpQuality: data.webpQuality ?? 82,
-      jpegQuality: data.jpegQuality ?? 80,
-      pngCompressionLevel: data.pngCompressionLevel ?? 9
-    });
-  } catch {
+  if (globalSettingsLoaded) {
+    return;
   }
+  if (globalSettingsPromise) {
+    return globalSettingsPromise;
+  }
+  globalSettingsPromise = (async () => {
+    try {
+      const backendURL = window.strapi?.backendURL;
+      const token = getAuthToken();
+      if (!backendURL || !token) {
+        return;
+      }
+      const headers = {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`
+      };
+      const response = await fetch(`${backendURL}/image-optimizer/default-mode`, { headers });
+      if (!response.ok) {
+        return;
+      }
+      const data = await response.json();
+      setGlobalSettings({
+        defaultChoice: data.defaultChoice ?? "original",
+        defaultMode: data.defaultMode ?? "compress",
+        webpQuality: data.webpQuality ?? 82,
+        jpegQuality: data.jpegQuality ?? 80,
+        pngCompressionLevel: data.pngCompressionLevel ?? 9
+      });
+      globalSettingsLoaded = true;
+    } catch {
+    } finally {
+      globalSettingsPromise = null;
+    }
+  })();
+  return globalSettingsPromise;
 };
-const getButtonLabel = (btn) => {
-  const aria = btn.getAttribute("aria-label") ?? "";
-  const text = btn.textContent ?? "";
-  const title = btn.getAttribute("title") ?? "";
-  return `${aria} ${text} ${title}`.toLowerCase();
-};
-const isActionButtonLabel = (btn, keywords) => {
-  const label = getButtonLabel(btn);
-  return keywords.some((keyword) => label.includes(keyword));
-};
-const isUploadPendingModal = (root) => {
-  const text = root.textContent?.toLowerCase() ?? "";
-  if (text.includes("ready to upload") || text.includes("yüklenmeye hazır") || text.includes("manage the assets before adding") || text.includes("medya kütüphanesine eklemeden önce")) {
+const getNativeActionButtons = (container) => [...container.querySelectorAll("button")].filter(
+  (btn) => !btn.closest("[data-optimizer-action-host]")
+);
+const isPendingLocalCard = (card) => {
+  if (card.querySelector('input[type="checkbox"], [role="checkbox"]')) {
+    return false;
+  }
+  const nativeButtons = getNativeActionButtons(card);
+  if (nativeButtons.length === 0) {
+    return false;
+  }
+  if (card.querySelector('img[src^="blob:"]')) {
     return true;
   }
-  const hasImageAsset = /\.(jpe?g|png|webp|gif|svg|bmp|tiff|avif)/i.test(text);
-  const hasEditButton = [...root.querySelectorAll("button")].some(
-    (btn) => isActionButtonLabel(btn, ["edit", "düzenle"])
-  );
-  return hasImageAsset && hasEditButton;
+  return nativeButtons.length >= 2;
+};
+const isUploadPendingModal = (root) => {
+  if (root.querySelector('[role="tablist"]')) {
+    return false;
+  }
+  if (root.querySelector('article input[type="checkbox"], article [role="checkbox"]')) {
+    return false;
+  }
+  const candidateCards = root.querySelectorAll('article [role="button"]');
+  return [...candidateCards].some(isPendingLocalCard);
 };
 const isLikelyImageCard = (card) => {
+  if (card.querySelector("img")) {
+    return true;
+  }
   const text = card.textContent?.toLowerCase() ?? "";
-  return /\.(jpe?g|png|webp|gif|svg|bmp|tiff|avif)/.test(text) || /\b(jpe?g|png|webp|gif|svg|bmp|tiff|avif)\b/.test(text) || text.includes("image") || text.includes("görsel");
+  return /\.(jpe?g|png|webp|bmp|tiff?|avif)/i.test(text) || /\b(jpe?g|png|webp|bmp|tiff?|avif)\b/i.test(text);
 };
 const isOptimizerMutationNode = (node) => {
   if (!(node instanceof Element)) {
@@ -5627,19 +5858,6 @@ const extractAssetDimensions = (card) => {
   }
   return void 0;
 };
-const findCardRoot = (editButton, dialog) => {
-  let element = editButton.parentElement;
-  while (element && element !== dialog) {
-    if (element.getAttribute("role") === "button") {
-      return element;
-    }
-    if (element.tagName === "ARTICLE" || element.querySelector('h2, [class*="CardTitle"]')) {
-      return element;
-    }
-    element = element.parentElement;
-  }
-  return null;
-};
 const findUploadDialog = () => {
   const candidates = [
     ...document.querySelectorAll('[role="dialog"]'),
@@ -5710,27 +5928,22 @@ const ensureFooterHost = (cardElement, assetId) => {
 const collectCards = (dialog) => {
   const entries = [];
   const seenCards = /* @__PURE__ */ new Set();
-  dialog.querySelectorAll("button").forEach((button) => {
-    if (isActionButtonLabel(button, ["optimization", "optimizasyon"])) {
-      return;
-    }
-    if (!isActionButtonLabel(button, ["edit", "düzenle"])) {
-      return;
-    }
-    const card = findCardRoot(button, dialog);
-    if (!card || seenCards.has(card)) {
+  dialog.querySelectorAll('article [role="button"]').forEach((card) => {
+    if (seenCards.has(card) || !isPendingLocalCard(card)) {
       return;
     }
     seenCards.add(card);
     if (!isLikelyImageCard(card)) {
       return;
     }
-    const actionsContainer = button.parentElement;
-    if (!actionsContainer) {
+    const assetName = extractAssetName(card);
+    if (!assetName || /\.(svg|gif)$/i.test(assetName)) {
       return;
     }
-    const assetName = extractAssetName(card);
-    if (!assetName) {
+    const nativeButtons = getNativeActionButtons(card);
+    const editButton = nativeButtons[nativeButtons.length - 1];
+    const actionsContainer = editButton?.parentElement;
+    if (!editButton || !actionsContainer) {
       return;
     }
     let assetId = card.getAttribute("data-optimizer-asset-id");
@@ -5745,7 +5958,7 @@ const collectCards = (dialog) => {
       assetName,
       width: dimensions?.width,
       height: dimensions?.height,
-      actionsContainer: ensureActionHost(actionsContainer, button, assetId),
+      actionsContainer: ensureActionHost(actionsContainer, editButton, assetId),
       footerHost: ensureFooterHost(card, assetId) ?? void 0
     });
   });
@@ -5760,6 +5973,9 @@ const syncUploadModal = () => {
     clearUploadSession();
     unmountBridge();
     return;
+  }
+  if (!globalSettingsLoaded) {
+    void loadGlobalSettings();
   }
   ensureBridge(dialog);
   setUploadAssetCards(collectCards(dialog));
@@ -5782,7 +5998,7 @@ const initUploadEnhancer = () => {
   started = true;
   patchUploadFetch();
   const boot = () => {
-    loadGlobalSettings();
+    void loadGlobalSettings();
     syncUploadModal();
     const observer = new MutationObserver((mutations) => {
       if (shouldSyncForMutations(mutations)) {
@@ -5812,10 +6028,10 @@ const index = {
         id: getTranslationKey("settings.section-label"),
         defaultMessage: "Image Optimizer"
       },
-      Component: () => Promise.resolve().then(() => require("./SettingsPage-XzPa9lYg.js")).then((mod) => ({
+      Component: () => Promise.resolve().then(() => require("./SettingsPage-AtzMy6Pc.js")).then((mod) => ({
         default: mod.ProtectedSettingsPage
       })),
-      permissions: []
+      permissions: [{ action: "plugin::image-optimizer.settings.read", subject: null }]
     });
     app.registerPlugin({
       id: PLUGIN_ID,
@@ -5830,7 +6046,7 @@ const index = {
     const importedTrads = await Promise.all(
       locales.map(async (locale) => {
         try {
-          const { default: data } = await __variableDynamicImportRuntimeHelper(/* @__PURE__ */ Object.assign({ "./translations/en.json": () => Promise.resolve().then(() => require("./en-DWyIXkkQ.js")), "./translations/tr.json": () => Promise.resolve().then(() => require("./tr-IgCWeQpq.js")) }), `./translations/${locale}.json`, 3);
+          const { default: data } = await __variableDynamicImportRuntimeHelper(/* @__PURE__ */ Object.assign({ "./translations/en.json": () => Promise.resolve().then(() => en), "./translations/tr.json": () => Promise.resolve().then(() => tr) }), `./translations/${locale}.json`, 3);
           return {
             data: prefixPluginTranslations(data, PLUGIN_ID),
             locale
@@ -5847,4 +6063,5 @@ exports.OptimizationQualityFields = OptimizationQualityFields;
 exports.PLUGIN_ID = PLUGIN_ID;
 exports.getTranslationKey = getTranslationKey;
 exports.index = index;
+exports.setGlobalSettings = setGlobalSettings;
 exports.useIntl = useIntl;

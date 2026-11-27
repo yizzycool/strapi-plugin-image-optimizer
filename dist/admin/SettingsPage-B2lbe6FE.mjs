@@ -2,21 +2,22 @@ import { jsx, jsxs } from "react/jsx-runtime";
 import { useState, useEffect } from "react";
 import { Typography, Button, Flex, Box, Grid, Field, SingleSelect, SingleSelectOption } from "@strapi/design-system";
 import { Check } from "@strapi/icons";
-import { useFetchClient, useNotification, useRBAC, Page, Layouts } from "@strapi/strapi/admin";
-import { u as useIntl, g as getTranslationKey, O as OptimizationQualityFields, P as PLUGIN_ID } from "./index-mS3p9j2N.mjs";
+import { Page, useFetchClient, useNotification, useRBAC, Layouts } from "@strapi/strapi/admin";
+import { u as useIntl, g as getTranslationKey, O as OptimizationQualityFields, P as PLUGIN_ID, s as setGlobalSettings } from "./index-XbFo1PYV.mjs";
 const SETTINGS_READ = [{ action: "plugin::image-optimizer.settings.read", subject: null }];
 const SETTINGS_UPDATE = [{ action: "plugin::image-optimizer.settings.update", subject: null }];
 const CHOICES = ["original", "global", "custom"];
 const MODES = ["webp", "compress"];
+const isSettingsValid = (settings) => Number.isFinite(settings.webpQuality) && settings.webpQuality >= 1 && settings.webpQuality <= 100 && Number.isFinite(settings.jpegQuality) && settings.jpegQuality >= 1 && settings.jpegQuality <= 100 && Number.isFinite(settings.pngCompressionLevel) && settings.pngCompressionLevel >= 0 && settings.pngCompressionLevel <= 9;
 const SettingsPage = () => {
   const { formatMessage } = useIntl();
   const { get, put } = useFetchClient();
   const { toggleNotification } = useNotification();
-  const { allowedActions: readActions } = useRBAC(SETTINGS_READ);
-  const { allowedActions: updateActions } = useRBAC(SETTINGS_UPDATE);
+  const { allowedActions: readActions, isLoading: isLoadingRead } = useRBAC(SETTINGS_READ);
+  const { allowedActions: updateActions, isLoading: isLoadingUpdate } = useRBAC(SETTINGS_UPDATE);
   const canReadGlobal = readActions.canRead;
   const canUpdateGlobal = updateActions.canUpdate;
-  const [globalSettings, setGlobalSettings] = useState({
+  const [globalSettings, setGlobalSettings$1] = useState({
     defaultChoice: "original",
     defaultMode: "compress",
     webpQuality: 82,
@@ -26,6 +27,9 @@ const SettingsPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   useEffect(() => {
+    if (isLoadingRead) {
+      return;
+    }
     const load = async () => {
       if (!canReadGlobal) {
         setIsLoading(false);
@@ -33,6 +37,7 @@ const SettingsPage = () => {
       }
       try {
         const { data: settings } = await get(`/${PLUGIN_ID}/settings`);
+        setGlobalSettings$1(settings);
         setGlobalSettings(settings);
       } catch {
         toggleNotification({
@@ -44,14 +49,24 @@ const SettingsPage = () => {
       }
     };
     load();
-  }, [canReadGlobal, formatMessage, get, toggleNotification]);
+  }, [canReadGlobal, formatMessage, get, isLoadingRead, toggleNotification]);
   const handleSave = async () => {
     if (!canUpdateGlobal) {
       return;
     }
+    if (!isSettingsValid(globalSettings)) {
+      toggleNotification({
+        type: "danger",
+        message: formatMessage({ id: getTranslationKey("settings.error") })
+      });
+      return;
+    }
     setIsSaving(true);
     try {
-      await put(`/${PLUGIN_ID}/settings`, globalSettings);
+      const { data: saved } = await put(`/${PLUGIN_ID}/settings`, globalSettings);
+      const nextSettings = saved ?? globalSettings;
+      setGlobalSettings$1(nextSettings);
+      setGlobalSettings(nextSettings);
       toggleNotification({
         type: "success",
         message: formatMessage({ id: getTranslationKey("settings.saved") })
@@ -65,7 +80,7 @@ const SettingsPage = () => {
       setIsSaving(false);
     }
   };
-  if (isLoading) {
+  if (isLoading || isLoadingRead || isLoadingUpdate) {
     return /* @__PURE__ */ jsx(Page.Loading, {});
   }
   if (!canReadGlobal) {
@@ -101,7 +116,7 @@ const SettingsPage = () => {
             SingleSelect,
             {
               value: globalSettings.defaultChoice,
-              onChange: (value) => setGlobalSettings((prev) => ({ ...prev, defaultChoice: value })),
+              onChange: (value) => setGlobalSettings$1((prev) => ({ ...prev, defaultChoice: value })),
               disabled: !canUpdateGlobal || isSaving,
               children: CHOICES.map((choice) => /* @__PURE__ */ jsx(SingleSelectOption, { value: choice, children: formatMessage({ id: getTranslationKey(`choice.${choice}`) }) }, choice))
             }
@@ -119,7 +134,7 @@ const SettingsPage = () => {
               SingleSelect,
               {
                 value: globalSettings.defaultMode,
-                onChange: (value) => setGlobalSettings((prev) => ({ ...prev, defaultMode: value })),
+                onChange: (value) => setGlobalSettings$1((prev) => ({ ...prev, defaultMode: value })),
                 disabled: !canUpdateGlobal || isSaving,
                 children: MODES.map((mode) => /* @__PURE__ */ jsx(SingleSelectOption, { value: mode, children: formatMessage({ id: getTranslationKey(`settings.mode.${mode}`) }) }, mode))
               }
@@ -131,7 +146,7 @@ const SettingsPage = () => {
             {
               value: globalSettings,
               fields: globalSettings.defaultMode === "webp" ? ["webp"] : ["webp", "jpeg", "png"],
-              onChange: (patch) => setGlobalSettings((prev) => ({ ...prev, ...patch })),
+              onChange: (patch) => setGlobalSettings$1((prev) => ({ ...prev, ...patch })),
               disabled: !canUpdateGlobal || isSaving,
               namePrefix: "global"
             }
@@ -142,7 +157,7 @@ const SettingsPage = () => {
   ] });
 };
 const ProtectedSettingsPage = () => {
-  return /* @__PURE__ */ jsx(SettingsPage, {});
+  return /* @__PURE__ */ jsx(Page.Protect, { permissions: SETTINGS_READ, children: /* @__PURE__ */ jsx(SettingsPage, {}) });
 };
 export {
   ProtectedSettingsPage,

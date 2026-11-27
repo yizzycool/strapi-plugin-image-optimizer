@@ -5,17 +5,18 @@ const React = require("react");
 const designSystem = require("@strapi/design-system");
 const icons = require("@strapi/icons");
 const admin = require("@strapi/strapi/admin");
-const index = require("./index-CCRpMKhX.js");
+const index = require("./index-DK67JL04.js");
 const SETTINGS_READ = [{ action: "plugin::image-optimizer.settings.read", subject: null }];
 const SETTINGS_UPDATE = [{ action: "plugin::image-optimizer.settings.update", subject: null }];
 const CHOICES = ["original", "global", "custom"];
 const MODES = ["webp", "compress"];
+const isSettingsValid = (settings) => Number.isFinite(settings.webpQuality) && settings.webpQuality >= 1 && settings.webpQuality <= 100 && Number.isFinite(settings.jpegQuality) && settings.jpegQuality >= 1 && settings.jpegQuality <= 100 && Number.isFinite(settings.pngCompressionLevel) && settings.pngCompressionLevel >= 0 && settings.pngCompressionLevel <= 9;
 const SettingsPage = () => {
   const { formatMessage } = index.useIntl();
   const { get, put } = admin.useFetchClient();
   const { toggleNotification } = admin.useNotification();
-  const { allowedActions: readActions } = admin.useRBAC(SETTINGS_READ);
-  const { allowedActions: updateActions } = admin.useRBAC(SETTINGS_UPDATE);
+  const { allowedActions: readActions, isLoading: isLoadingRead } = admin.useRBAC(SETTINGS_READ);
+  const { allowedActions: updateActions, isLoading: isLoadingUpdate } = admin.useRBAC(SETTINGS_UPDATE);
   const canReadGlobal = readActions.canRead;
   const canUpdateGlobal = updateActions.canUpdate;
   const [globalSettings, setGlobalSettings] = React.useState({
@@ -28,6 +29,9 @@ const SettingsPage = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
   React.useEffect(() => {
+    if (isLoadingRead) {
+      return;
+    }
     const load = async () => {
       if (!canReadGlobal) {
         setIsLoading(false);
@@ -36,6 +40,7 @@ const SettingsPage = () => {
       try {
         const { data: settings } = await get(`/${index.PLUGIN_ID}/settings`);
         setGlobalSettings(settings);
+        index.setGlobalSettings(settings);
       } catch {
         toggleNotification({
           type: "danger",
@@ -46,14 +51,24 @@ const SettingsPage = () => {
       }
     };
     load();
-  }, [canReadGlobal, formatMessage, get, toggleNotification]);
+  }, [canReadGlobal, formatMessage, get, isLoadingRead, toggleNotification]);
   const handleSave = async () => {
     if (!canUpdateGlobal) {
       return;
     }
+    if (!isSettingsValid(globalSettings)) {
+      toggleNotification({
+        type: "danger",
+        message: formatMessage({ id: index.getTranslationKey("settings.error") })
+      });
+      return;
+    }
     setIsSaving(true);
     try {
-      await put(`/${index.PLUGIN_ID}/settings`, globalSettings);
+      const { data: saved } = await put(`/${index.PLUGIN_ID}/settings`, globalSettings);
+      const nextSettings = saved ?? globalSettings;
+      setGlobalSettings(nextSettings);
+      index.setGlobalSettings(nextSettings);
       toggleNotification({
         type: "success",
         message: formatMessage({ id: index.getTranslationKey("settings.saved") })
@@ -67,7 +82,7 @@ const SettingsPage = () => {
       setIsSaving(false);
     }
   };
-  if (isLoading) {
+  if (isLoading || isLoadingRead || isLoadingUpdate) {
     return /* @__PURE__ */ jsxRuntime.jsx(admin.Page.Loading, {});
   }
   if (!canReadGlobal) {
@@ -144,7 +159,7 @@ const SettingsPage = () => {
   ] });
 };
 const ProtectedSettingsPage = () => {
-  return /* @__PURE__ */ jsxRuntime.jsx(SettingsPage, {});
+  return /* @__PURE__ */ jsxRuntime.jsx(admin.Page.Protect, { permissions: SETTINGS_READ, children: /* @__PURE__ */ jsxRuntime.jsx(SettingsPage, {}) });
 };
 exports.ProtectedSettingsPage = ProtectedSettingsPage;
 exports.SettingsPage = SettingsPage;

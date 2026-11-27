@@ -3,44 +3,22 @@ import fs from "fs";
 import { join } from "path";
 import sharp from "sharp";
 import { file } from "@strapi/utils";
+const register = () => {
+};
 const PLUGIN_ID = "image-optimizer";
 const OPTIMIZATION_CHOICES = ["original", "global", "custom"];
 const OPTIMIZATION_MODES = ["webp", "compress"];
-const register = async ({ strapi }) => {
-  await strapi.admin.services.permission.actionProvider.registerMany([
-    {
-      section: "plugins",
-      displayName: "Read Image Optimizer settings",
-      uid: "settings.read",
-      pluginName: PLUGIN_ID
-    },
-    {
-      section: "plugins",
-      displayName: "Update Image Optimizer settings",
-      uid: "settings.update",
-      pluginName: PLUGIN_ID
-    }
-  ]);
-};
-const uploadContext = new AsyncLocalStorage();
 const optimizerUploadContext = new AsyncLocalStorage();
-let fallbackContext = null;
 const createUploadContext = (preferences) => ({
   preferences,
   nextIndex: 0
 });
-const setFallbackUploadPreferences = (preferences) => {
-  fallbackContext = createUploadContext(preferences);
-};
-const clearFallbackUploadPreferences = () => {
-  fallbackContext = null;
-};
 const getActivePreferences = () => {
   const store = optimizerUploadContext.getStore();
   if (store?.preferences.length) {
     return store;
   }
-  return fallbackContext;
+  return null;
 };
 const parseUploadPreferences = (body) => {
   const raw = body?.imageOptimizerPreferences;
@@ -87,7 +65,7 @@ const isUploadRoute = (method, path) => {
     return false;
   }
   const normalizedPath = path.replace(/\/+$/, "") || "/";
-  return normalizedPath === "/upload";
+  return /(?:^|\/)upload$/.test(normalizedPath);
 };
 const isValidChoice$2 = (choice) => typeof choice === "string" && OPTIMIZATION_CHOICES.includes(choice);
 const isValidMode$2 = (mode) => typeof mode === "string" && OPTIMIZATION_MODES.includes(mode);
@@ -97,12 +75,6 @@ const isValidCustomSettings = (custom) => {
   }
   const value = custom;
   return isValidMode$2(value.mode) && typeof value.webpQuality === "number" && typeof value.jpegQuality === "number" && typeof value.pngCompressionLevel === "number" && typeof value.maxWidth === "number" && typeof value.maxHeight === "number";
-};
-const runWithUser = (userId, fn) => {
-  if (userId === void 0) {
-    return fn();
-  }
-  return uploadContext.run({ userId }, fn);
 };
 const applyPreferenceToEntity = (entity, fileInfo) => {
   const fileName = String(entity.name ?? fileInfo.name ?? "");
@@ -131,6 +103,21 @@ const applyPreferenceToEntity = (entity, fileInfo) => {
   }
 };
 const bootstrap = async ({ strapi }) => {
+  const permissionService = strapi.service("admin::permission") ?? strapi.admin?.services?.permission;
+  await permissionService?.actionProvider?.registerMany?.([
+    {
+      section: "plugins",
+      displayName: "Read Image Optimizer settings",
+      uid: "settings.read",
+      pluginName: PLUGIN_ID
+    },
+    {
+      section: "plugins",
+      displayName: "Update Image Optimizer settings",
+      uid: "settings.update",
+      pluginName: PLUGIN_ID
+    }
+  ]);
   const uploadService = strapi.plugin("upload").service("upload");
   const imageService = strapi.plugin("upload").service("image-manipulation");
   strapi.server.use(async (ctx, next) => {
@@ -141,26 +128,13 @@ const bootstrap = async ({ strapi }) => {
     if (preferences.length === 0) {
       return next();
     }
-    setFallbackUploadPreferences(preferences);
-    try {
-      return await optimizerUploadContext.run(createUploadContext(preferences), () => next());
-    } finally {
-      clearFallbackUploadPreferences();
-    }
+    return optimizerUploadContext.run(createUploadContext(preferences), () => next());
   });
   const originalFormatFileInfo = uploadService.formatFileInfo.bind(uploadService);
   uploadService.formatFileInfo = async (fileProps, fileInfo = {}, metas = {}) => {
     const entity = await originalFormatFileInfo(fileProps, fileInfo, metas);
     applyPreferenceToEntity(entity, fileInfo);
     return entity;
-  };
-  const originalUpload = uploadService.upload.bind(uploadService);
-  uploadService.upload = async (args, opts) => {
-    return runWithUser(opts?.user?.id, () => originalUpload(args, opts));
-  };
-  const originalReplace = uploadService.replace.bind(uploadService);
-  uploadService.replace = async (id, args, opts) => {
-    return runWithUser(opts?.user?.id, () => originalReplace(id, args, opts));
   };
   const originalOptimize = imageService.optimize.bind(imageService);
   imageService.optimize = async (file2) => {
@@ -205,18 +179,24 @@ const config = {
     pngCompressionLevel: 9
   }),
   validator(config2) {
+    if (config2.defaultChoice !== void 0 && !OPTIMIZATION_CHOICES.includes(config2.defaultChoice)) {
+      throw new Error(`defaultChoice must be one of: ${OPTIMIZATION_CHOICES.join(", ")}`);
+    }
+    if (config2.defaultMode !== void 0 && !OPTIMIZATION_MODES.includes(config2.defaultMode)) {
+      throw new Error(`defaultMode must be one of: ${OPTIMIZATION_MODES.join(", ")}`);
+    }
     if (config2.webpQuality !== void 0) {
-      if (config2.webpQuality < 1 || config2.webpQuality > 100) {
+      if (typeof config2.webpQuality !== "number" || !Number.isFinite(config2.webpQuality) || config2.webpQuality < 1 || config2.webpQuality > 100) {
         throw new Error("webpQuality must be between 1 and 100");
       }
     }
     if (config2.jpegQuality !== void 0) {
-      if (config2.jpegQuality < 1 || config2.jpegQuality > 100) {
+      if (typeof config2.jpegQuality !== "number" || !Number.isFinite(config2.jpegQuality) || config2.jpegQuality < 1 || config2.jpegQuality > 100) {
         throw new Error("jpegQuality must be between 1 and 100");
       }
     }
     if (config2.pngCompressionLevel !== void 0) {
-      if (config2.pngCompressionLevel < 0 || config2.pngCompressionLevel > 9) {
+      if (typeof config2.pngCompressionLevel !== "number" || !Number.isFinite(config2.pngCompressionLevel) || config2.pngCompressionLevel < 0 || config2.pngCompressionLevel > 9) {
         throw new Error("pngCompressionLevel must be between 0 and 9");
       }
     }
@@ -235,32 +215,6 @@ const preference$1 = ({ strapi }) => ({
       pngCompressionLevel: settings.pngCompressionLevel
     };
   },
-  async getPreference(ctx) {
-    const userId = ctx.state.user?.id;
-    if (!userId) {
-      return ctx.unauthorized();
-    }
-    const preferenceService = strapi.plugin("image-optimizer").service("preference");
-    const mode = await preferenceService.getUserPreference(userId);
-    const settings = await preferenceService.getGlobalSettings();
-    ctx.body = {
-      mode: mode ?? settings.defaultMode,
-      defaultMode: settings.defaultMode,
-      defaultChoice: settings.defaultChoice
-    };
-  },
-  async updatePreference(ctx) {
-    const userId = ctx.state.user?.id;
-    if (!userId) {
-      return ctx.unauthorized();
-    }
-    const { mode } = ctx.request.body ?? {};
-    if (!isValidMode$1(mode)) {
-      return ctx.badRequest("Invalid optimization mode");
-    }
-    await strapi.plugin("image-optimizer").service("preference").setUserPreference(userId, mode);
-    ctx.body = { mode };
-  },
   async getSettings(ctx) {
     const settings = await strapi.plugin("image-optimizer").service("preference").getGlobalSettings();
     ctx.body = settings;
@@ -273,13 +227,13 @@ const preference$1 = ({ strapi }) => ({
     if (defaultChoice !== void 0 && !isValidChoice$1(defaultChoice)) {
       return ctx.badRequest("Invalid default choice");
     }
-    if (webpQuality !== void 0 && (webpQuality < 1 || webpQuality > 100)) {
+    if (webpQuality !== void 0 && (!Number.isFinite(Number(webpQuality)) || Number(webpQuality) < 1 || Number(webpQuality) > 100)) {
       return ctx.badRequest("Invalid WebP quality");
     }
-    if (jpegQuality !== void 0 && (jpegQuality < 1 || jpegQuality > 100)) {
+    if (jpegQuality !== void 0 && (!Number.isFinite(Number(jpegQuality)) || Number(jpegQuality) < 1 || Number(jpegQuality) > 100)) {
       return ctx.badRequest("Invalid JPEG quality");
     }
-    if (pngCompressionLevel !== void 0 && (pngCompressionLevel < 0 || pngCompressionLevel > 9)) {
+    if (pngCompressionLevel !== void 0 && (!Number.isFinite(Number(pngCompressionLevel)) || Number(pngCompressionLevel) < 0 || Number(pngCompressionLevel) > 9)) {
       return ctx.badRequest("Invalid PNG compression level");
     }
     const payload = {};
@@ -304,22 +258,6 @@ const routes = {
         method: "GET",
         path: "/default-mode",
         handler: "preference.getDefaultMode",
-        config: {
-          policies: ["admin::isAuthenticatedAdmin"]
-        }
-      },
-      {
-        method: "GET",
-        path: "/preference",
-        handler: "preference.getPreference",
-        config: {
-          policies: ["admin::isAuthenticatedAdmin"]
-        }
-      },
-      {
-        method: "PUT",
-        path: "/preference",
-        handler: "preference.updatePreference",
         config: {
           policies: ["admin::isAuthenticatedAdmin"]
         }
@@ -360,7 +298,6 @@ const routes = {
   }
 };
 const GLOBAL_SETTINGS_KEY = "global-settings";
-const userPreferenceKey = (userId) => `user-pref-${userId}`;
 const isValidChoice = (choice) => typeof choice === "string" && OPTIMIZATION_CHOICES.includes(choice);
 const isValidMode = (mode) => typeof mode === "string" && OPTIMIZATION_MODES.includes(mode);
 const normalizeLegacyMode = (mode) => {
@@ -378,24 +315,6 @@ const buildSettings = (mode, source) => ({
   maxHeight: source.maxHeight ?? 0
 });
 const preference = ({ strapi }) => ({
-  async getUserPreference(userId) {
-    const stored = await strapi.store({
-      type: "plugin",
-      name: PLUGIN_ID,
-      key: userPreferenceKey(userId)
-    }).get();
-    if (stored?.mode && isValidMode(stored.mode)) {
-      return stored.mode;
-    }
-    return null;
-  },
-  async setUserPreference(userId, mode) {
-    await strapi.store({
-      type: "plugin",
-      name: PLUGIN_ID,
-      key: userPreferenceKey(userId)
-    }).set({ value: { mode } });
-  },
   async getGlobalSettings() {
     const configDefaults = strapi.config.get(`plugin::${PLUGIN_ID}`);
     const stored = await strapi.store({
@@ -470,6 +389,7 @@ const preference = ({ strapi }) => ({
 });
 const { bytesToKbytes } = file;
 const SKIP_FORMATS = /* @__PURE__ */ new Set(["svg", "gif"]);
+const KNOWN_IMAGE_EXT_REGEX = /\.(jpe?g|png|webp|tiff?|avif|bmp|heic|heif)$/i;
 const getMetadata = async (file2) => {
   if (!file2.filepath) {
     return new Promise((resolve, reject) => {
@@ -493,20 +413,31 @@ const buildOutputPath = (file2, suffix) => {
   }
   return `${suffix}-${file2.hash}`;
 };
+const getOrientedDimensions = (metadata) => {
+  const rawWidth = metadata.width ?? 0;
+  const rawHeight = metadata.height ?? 0;
+  const orientation = metadata.orientation ?? 1;
+  if (orientation >= 5 && orientation <= 8) {
+    return { width: rawHeight, height: rawWidth };
+  }
+  return { width: rawWidth, height: rawHeight };
+};
 const applyResize = (transformer, settings, metadata) => {
   const targetWidth = settings.maxWidth;
   const targetHeight = settings.maxHeight;
-  const sourceWidth = metadata.width ?? 0;
-  const sourceHeight = metadata.height ?? 0;
+  const { width: sourceWidth, height: sourceHeight } = getOrientedDimensions(metadata);
   if (!targetWidth || !targetHeight || !sourceWidth || !sourceHeight) {
-    return transformer;
+    return { transformer, resized: false };
   }
   if (targetWidth === sourceWidth && targetHeight === sourceHeight) {
-    return transformer;
+    return { transformer, resized: false };
   }
-  return transformer.resize(targetWidth, targetHeight, {
-    fit: "fill"
-  });
+  return {
+    transformer: transformer.resize(targetWidth, targetHeight, {
+      fit: "inside"
+    }),
+    resized: true
+  };
 };
 const applyTransform = (transformer, format, mode, settings) => {
   if (mode === "webp") {
@@ -528,6 +459,13 @@ const applyTransform = (transformer, format, mode, settings) => {
       return transformer;
   }
 };
+const buildWebpFileName = (name, ext) => {
+  if (ext && name.toLowerCase().endsWith(ext.toLowerCase())) {
+    return `${name.slice(0, name.length - ext.length)}.webp`;
+  }
+  const baseName = name.replace(KNOWN_IMAGE_EXT_REGEX, "");
+  return `${baseName}.webp`;
+};
 const optimizer = ({ strapi }) => ({
   async process(file2, mode, settings) {
     const metadata = await getMetadata(file2);
@@ -544,9 +482,9 @@ const optimizer = ({ strapi }) => ({
       }
       return sharp(file2.filepath, { animated: format === "gif" });
     };
-    let transformer = createTransformer();
-    transformer = applyResize(transformer, settings, metadata);
-    transformer = applyTransform(transformer, format, mode, settings);
+    let transformer = createTransformer().rotate();
+    const resizedResult = applyResize(transformer, settings, metadata);
+    transformer = applyTransform(resizedResult.transformer, format, mode, settings);
     if (!file2.filepath) {
       transformer = transformer.on("info", (info) => {
         newInfo = info;
@@ -556,7 +494,9 @@ const optimizer = ({ strapi }) => ({
       newInfo = await transformer.toFile(outputPath);
     }
     const { width, height, size, pageHeight } = newInfo ?? {};
-    if (size && originalSize && size >= originalSize && mode !== "webp") {
+    if (size && originalSize && size >= originalSize && mode !== "webp" && !resizedResult.resized) {
+      await fs.promises.unlink(outputPath).catch(() => {
+      });
       return null;
     }
     const newFile = {
@@ -571,8 +511,7 @@ const optimizer = ({ strapi }) => ({
     if (mode === "webp") {
       newFile.ext = ".webp";
       newFile.mime = "image/webp";
-      const baseName = file2.name.replace(/\.[^.]+$/, "");
-      newFile.name = `${baseName}.webp`;
+      newFile.name = buildWebpFileName(file2.name, file2.ext);
     }
     return newFile;
   }
@@ -584,6 +523,8 @@ const services = {
 const index = {
   register,
   bootstrap,
+  destroy() {
+  },
   config,
   controllers,
   routes,
