@@ -8,6 +8,7 @@ import { type OptimizationMode, type OptimizationSettings } from '../constants';
 const { bytesToKbytes } = fileUtils;
 
 const SKIP_FORMATS = new Set(['svg', 'gif']);
+const KNOWN_IMAGE_EXT_REGEX = /\.(jpe?g|png|webp|tiff?|avif|bmp|heic|heif)$/i;
 
 interface UploadFile {
   filepath?: string;
@@ -54,27 +55,42 @@ const buildOutputPath = (file: UploadFile, suffix: string) => {
   return `${suffix}-${file.hash}`;
 };
 
+const getOrientedDimensions = (metadata: sharp.Metadata) => {
+  const rawWidth = metadata.width ?? 0;
+  const rawHeight = metadata.height ?? 0;
+  const orientation = metadata.orientation ?? 1;
+
+  // EXIF orientations 5-8 rotate the image by 90 or 270 degrees.
+  if (orientation >= 5 && orientation <= 8) {
+    return { width: rawHeight, height: rawWidth };
+  }
+
+  return { width: rawWidth, height: rawHeight };
+};
+
 const applyResize = (
   transformer: sharp.Sharp,
   settings: OptimizationSettings,
   metadata: sharp.Metadata
-) => {
+): { transformer: sharp.Sharp; resized: boolean } => {
   const targetWidth = settings.maxWidth;
   const targetHeight = settings.maxHeight;
-  const sourceWidth = metadata.width ?? 0;
-  const sourceHeight = metadata.height ?? 0;
+  const { width: sourceWidth, height: sourceHeight } = getOrientedDimensions(metadata);
 
   if (!targetWidth || !targetHeight || !sourceWidth || !sourceHeight) {
-    return transformer;
+    return { transformer, resized: false };
   }
 
   if (targetWidth === sourceWidth && targetHeight === sourceHeight) {
-    return transformer;
+    return { transformer, resized: false };
   }
 
-  return transformer.resize(targetWidth, targetHeight, {
-    fit: 'fill',
-  });
+  return {
+    transformer: transformer.resize(targetWidth, targetHeight, {
+      fit: 'inside',
+    }),
+    resized: true,
+  };
 };
 
 const applyTransform = (
@@ -104,6 +120,15 @@ const applyTransform = (
   }
 };
 
+const buildWebpFileName = (name: string, ext?: string) => {
+  if (ext && name.toLowerCase().endsWith(ext.toLowerCase())) {
+    return `${name.slice(0, name.length - ext.length)}.webp`;
+  }
+
+  const baseName = name.replace(KNOWN_IMAGE_EXT_REGEX, '');
+  return `${baseName}.webp`;
+};
+
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
   async process(
     file: UploadFile,
@@ -128,9 +153,9 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
       return sharp(file.filepath, { animated: format === 'gif' });
     };
 
-    let transformer = createTransformer();
-    transformer = applyResize(transformer, settings, metadata);
-    transformer = applyTransform(transformer, format, mode, settings);
+    let transformer = createTransformer().rotate();
+    const resizedResult = applyResize(transformer, settings, metadata);
+    transformer = applyTransform(resizedResult.transformer, format, mode, settings);
 
     if (!file.filepath) {
       transformer = transformer.on('info', (info) => {
@@ -141,9 +166,12 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
       newInfo = await transformer.toFile(outputPath);
     }
 
-    const { width, height, size, pageHeight } = newInfo ?? {};
+    const { width, height, size, pageHeight } = (newInfo ?? {}) as Partial<
+      sharp.OutputInfo & { pageHeight?: number }
+    >;
 
-    if (size && originalSize && size >= originalSize && mode !== 'webp') {
+    if (size && originalSize && size >= originalSize && mode !== 'webp' && !resizedResult.resized) {
+      await fs.promises.unlink(outputPath).catch(() => {});
       return null;
     }
 
@@ -160,8 +188,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
     if (mode === 'webp') {
       newFile.ext = '.webp';
       newFile.mime = 'image/webp';
-      const baseName = file.name.replace(/\.[^.]+$/, '');
-      newFile.name = `${baseName}.webp`;
+      newFile.name = buildWebpFileName(file.name, file.ext);
     }
 
     return newFile;

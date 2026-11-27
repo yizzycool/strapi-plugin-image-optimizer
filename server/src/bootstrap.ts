@@ -7,16 +7,13 @@ import {
   type OptimizationMode,
   type OptimizationSettings,
 } from './constants';
-import { uploadContext } from './utils/request-context';
 import {
-  clearFallbackUploadPreferences,
   consumeUploadPreference,
   createUploadContext,
   findUploadPreference,
   isUploadRoute,
   optimizerUploadContext,
   parseUploadPreferences,
-  setFallbackUploadPreferences,
 } from './utils/upload-preferences-context';
 
 const isValidChoice = (choice: unknown): choice is OptimizationChoice =>
@@ -40,13 +37,6 @@ const isValidCustomSettings = (custom: unknown): custom is OptimizationSettings 
     typeof value.maxWidth === 'number' &&
     typeof value.maxHeight === 'number'
   );
-};
-
-const runWithUser = <T>(userId: number | undefined, fn: () => Promise<T>) => {
-  if (userId === undefined) {
-    return fn();
-  }
-  return uploadContext.run({ userId }, fn);
 };
 
 const applyPreferenceToEntity = (
@@ -89,6 +79,33 @@ const applyPreferenceToEntity = (
 };
 
 export default async ({ strapi }: { strapi: Core.Strapi }) => {
+  const permissionService =
+    strapi.service('admin::permission') ??
+    (strapi as Core.Strapi & {
+      admin?: {
+        services?: {
+          permission?: {
+            actionProvider?: { registerMany?: (actions: unknown[]) => Promise<void> };
+          };
+        };
+      };
+    }).admin?.services?.permission;
+
+  await permissionService?.actionProvider?.registerMany?.([
+    {
+      section: 'plugins',
+      displayName: 'Read Image Optimizer settings',
+      uid: 'settings.read',
+      pluginName: PLUGIN_ID,
+    },
+    {
+      section: 'plugins',
+      displayName: 'Update Image Optimizer settings',
+      uid: 'settings.update',
+      pluginName: PLUGIN_ID,
+    },
+  ]);
+
   const uploadService = strapi.plugin('upload').service('upload');
   const imageService = strapi.plugin('upload').service('image-manipulation');
 
@@ -103,13 +120,7 @@ export default async ({ strapi }: { strapi: Core.Strapi }) => {
       return next();
     }
 
-    setFallbackUploadPreferences(preferences);
-
-    try {
-      return await optimizerUploadContext.run(createUploadContext(preferences), () => next());
-    } finally {
-      clearFallbackUploadPreferences();
-    }
+    return optimizerUploadContext.run(createUploadContext(preferences), () => next());
   });
 
   const originalFormatFileInfo = uploadService.formatFileInfo.bind(uploadService);
@@ -121,16 +132,6 @@ export default async ({ strapi }: { strapi: Core.Strapi }) => {
     const entity = await originalFormatFileInfo(fileProps, fileInfo, metas);
     applyPreferenceToEntity(entity as Record<string, unknown>, fileInfo);
     return entity;
-  };
-
-  const originalUpload = uploadService.upload.bind(uploadService);
-  uploadService.upload = async (args, opts) => {
-    return runWithUser(opts?.user?.id, () => originalUpload(args, opts));
-  };
-
-  const originalReplace = uploadService.replace.bind(uploadService);
-  uploadService.replace = async (id, args, opts) => {
-    return runWithUser(opts?.user?.id, () => originalReplace(id, args, opts));
   };
 
   const originalOptimize = imageService.optimize.bind(imageService);

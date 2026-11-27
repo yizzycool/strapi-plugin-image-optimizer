@@ -12,8 +12,6 @@ import type { PluginConfig } from '../config';
 
 const GLOBAL_SETTINGS_KEY = 'global-settings';
 
-const userPreferenceKey = (userId: number) => `user-pref-${userId}`;
-
 const isValidChoice = (choice: unknown): choice is OptimizationChoice =>
   typeof choice === 'string' && OPTIMIZATION_CHOICES.includes(choice as OptimizationChoice);
 
@@ -29,7 +27,7 @@ const normalizeLegacyMode = (mode: unknown): OptimizationMode | 'none' | null =>
 
 const buildSettings = (
   mode: OptimizationMode,
-  source: Partial<OptimizationSettings> | PluginConfig
+  source: Partial<OptimizationSettings & PluginConfig>
 ): OptimizationSettings => ({
   mode,
   webpQuality: source.webpQuality ?? 82,
@@ -40,35 +38,13 @@ const buildSettings = (
 });
 
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
-  async getUserPreference(userId: number): Promise<OptimizationMode | null> {
-    const stored = await strapi.store({
-      type: 'plugin',
-      name: PLUGIN_ID,
-      key: userPreferenceKey(userId),
-    }).get<{ mode?: OptimizationMode }>();
-
-    if (stored?.mode && isValidMode(stored.mode)) {
-      return stored.mode;
-    }
-
-    return null;
-  },
-
-  async setUserPreference(userId: number, mode: OptimizationMode) {
-    await strapi.store({
-      type: 'plugin',
-      name: PLUGIN_ID,
-      key: userPreferenceKey(userId),
-    }).set({ value: { mode } });
-  },
-
   async getGlobalSettings(): Promise<PluginConfig> {
     const configDefaults = strapi.config.get<PluginConfig>(`plugin::${PLUGIN_ID}`);
-    const stored = await strapi.store({
+    const stored = (await strapi.store({
       type: 'plugin',
       name: PLUGIN_ID,
       key: GLOBAL_SETTINGS_KEY,
-    }).get<Partial<PluginConfig>>();
+    }).get()) as Partial<PluginConfig> | null;
 
     const merged = {
       ...configDefaults,

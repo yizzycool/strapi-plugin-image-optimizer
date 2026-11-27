@@ -16,15 +16,31 @@ let bridgeRoot: Root | null = null;
 let bridgeHost: HTMLElement | null = null;
 let mountedDialog: Element | null = null;
 let started = false;
+let globalSettingsLoaded = false;
+let globalSettingsPromise: Promise<void> | null = null;
+
+const parseStoredToken = (raw: string | null): string | null => {
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return typeof parsed === 'string' && parsed ? parsed : null;
+  } catch {
+    return raw;
+  }
+};
 
 const getAuthToken = (): string | null => {
-  const fromStorage = localStorage.getItem('jwtToken');
-  if (fromStorage) {
-    try {
-      return JSON.parse(fromStorage) as string;
-    } catch {
-      return null;
-    }
+  const fromLocal = parseStoredToken(localStorage.getItem('jwtToken'));
+  if (fromLocal) {
+    return fromLocal;
+  }
+
+  const fromSession = parseStoredToken(sessionStorage.getItem('jwtToken'));
+  if (fromSession) {
+    return fromSession;
   }
 
   const match = document.cookie.match(/(?:^|;\s*)jwtToken=([^;]+)/);
@@ -32,84 +48,102 @@ const getAuthToken = (): string | null => {
 };
 
 const loadGlobalSettings = async () => {
-  try {
-    const backendURL = window.strapi?.backendURL;
-    if (!backendURL) {
-      return;
-    }
-
-    const token = getAuthToken();
-    const headers: Record<string, string> = { Accept: 'application/json' };
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${backendURL}/image-optimizer/default-mode`, { headers });
-    if (!response.ok) {
-      return;
-    }
-
-    const data = (await response.json()) as {
-      defaultChoice?: 'original' | 'global' | 'custom';
-      defaultMode?: 'webp' | 'compress';
-      webpQuality?: number;
-      jpegQuality?: number;
-      pngCompressionLevel?: number;
-    };
-
-    setGlobalSettings({
-      defaultChoice: data.defaultChoice ?? 'original',
-      defaultMode: data.defaultMode ?? 'compress',
-      webpQuality: data.webpQuality ?? 82,
-      jpegQuality: data.jpegQuality ?? 80,
-      pngCompressionLevel: data.pngCompressionLevel ?? 9,
-    });
-  } catch {
-    // Keep fallback defaults.
+  if (globalSettingsLoaded) {
+    return;
   }
+
+  if (globalSettingsPromise) {
+    return globalSettingsPromise;
+  }
+
+  globalSettingsPromise = (async () => {
+    try {
+      const backendURL = (window.strapi as { backendURL?: string } | undefined)?.backendURL;
+      const token = getAuthToken();
+      if (!backendURL || !token) {
+        return;
+      }
+
+      const headers: Record<string, string> = {
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      };
+
+      const response = await fetch(`${backendURL}/image-optimizer/default-mode`, { headers });
+      if (!response.ok) {
+        return;
+      }
+
+      const data = (await response.json()) as {
+        defaultChoice?: 'original' | 'global' | 'custom';
+        defaultMode?: 'webp' | 'compress';
+        webpQuality?: number;
+        jpegQuality?: number;
+        pngCompressionLevel?: number;
+      };
+
+      setGlobalSettings({
+        defaultChoice: data.defaultChoice ?? 'original',
+        defaultMode: data.defaultMode ?? 'compress',
+        webpQuality: data.webpQuality ?? 82,
+        jpegQuality: data.jpegQuality ?? 80,
+        pngCompressionLevel: data.pngCompressionLevel ?? 9,
+      });
+      globalSettingsLoaded = true;
+    } catch {
+      // Keep fallback defaults; retry next time an upload dialog opens.
+    } finally {
+      globalSettingsPromise = null;
+    }
+  })();
+
+  return globalSettingsPromise;
 };
 
-const getButtonLabel = (btn: Element) => {
-  const aria = btn.getAttribute('aria-label') ?? '';
-  const text = btn.textContent ?? '';
-  const title = btn.getAttribute('title') ?? '';
+const getNativeActionButtons = (container: Element): HTMLButtonElement[] =>
+  [...container.querySelectorAll('button')].filter(
+    (btn): btn is HTMLButtonElement => !btn.closest('[data-optimizer-action-host]')
+  );
 
-  return `${aria} ${text} ${title}`.toLowerCase();
-};
+const isPendingLocalCard = (card: Element) => {
+  if (card.querySelector('input[type="checkbox"], [role="checkbox"]')) {
+    return false;
+  }
 
-const isActionButtonLabel = (btn: Element, keywords: string[]) => {
-  const label = getButtonLabel(btn);
-  return keywords.some((keyword) => label.includes(keyword));
-};
+  const nativeButtons = getNativeActionButtons(card);
+  if (nativeButtons.length === 0) {
+    return false;
+  }
 
-const isUploadPendingModal = (root: Element) => {
-  const text = root.textContent?.toLowerCase() ?? '';
-
-  if (
-    text.includes('ready to upload') ||
-    text.includes('yüklenmeye hazır') ||
-    text.includes('manage the assets before adding') ||
-    text.includes('medya kütüphanesine eklemeden önce')
-  ) {
+  if (card.querySelector('img[src^="blob:"]')) {
     return true;
   }
 
-  const hasImageAsset = /\.(jpe?g|png|webp|gif|svg|bmp|tiff|avif)/i.test(text);
-  const hasEditButton = [...root.querySelectorAll('button')].some((btn) =>
-    isActionButtonLabel(btn, ['edit', 'düzenle'])
-  );
+  return nativeButtons.length >= 2;
+};
 
-  return hasImageAsset && hasEditButton;
+const isUploadPendingModal = (root: Element) => {
+  // Exclude Media Picker (AssetDialog) which uses tabs ("Browse" / "Selected").
+  if (root.querySelector('[role="tablist"]')) {
+    return false;
+  }
+
+  // Exclude dialogs showing selectable Media Library / Picker cards.
+  if (root.querySelector('article input[type="checkbox"], article [role="checkbox"]')) {
+    return false;
+  }
+
+  const candidateCards = root.querySelectorAll('article [role="button"]');
+  return [...candidateCards].some(isPendingLocalCard);
 };
 
 const isLikelyImageCard = (card: Element) => {
+  if (card.querySelector('img')) {
+    return true;
+  }
+
   const text = card.textContent?.toLowerCase() ?? '';
-  return (
-    /\.(jpe?g|png|webp|gif|svg|bmp|tiff|avif)/.test(text) ||
-    /\b(jpe?g|png|webp|gif|svg|bmp|tiff|avif)\b/.test(text) ||
-    text.includes('image') ||
-    text.includes('görsel')
-  );
+  return /\.(jpe?g|png|webp|bmp|tiff?|avif)/i.test(text) || /\b(jpe?g|png|webp|bmp|tiff?|avif)\b/i.test(text);
 };
 
 const isOptimizerMutationNode = (node: Node): boolean => {
@@ -208,24 +242,6 @@ const extractAssetDimensions = (card: Element) => {
   return undefined;
 };
 
-const findCardRoot = (editButton: Element, dialog: Element) => {
-  let element = editButton.parentElement;
-
-  while (element && element !== dialog) {
-    if (element.getAttribute('role') === 'button') {
-      return element;
-    }
-
-    if (element.tagName === 'ARTICLE' || element.querySelector('h2, [class*="CardTitle"]')) {
-      return element;
-    }
-
-    element = element.parentElement;
-  }
-
-  return null;
-};
-
 const findUploadDialog = () => {
   const candidates = [
     ...document.querySelectorAll('[role="dialog"]'),
@@ -316,17 +332,8 @@ const collectCards = (dialog: Element): UploadAssetEntry[] => {
   const entries: UploadAssetEntry[] = [];
   const seenCards = new Set<Element>();
 
-  dialog.querySelectorAll('button').forEach((button) => {
-    if (isActionButtonLabel(button, ['optimization', 'optimizasyon'])) {
-      return;
-    }
-
-    if (!isActionButtonLabel(button, ['edit', 'düzenle'])) {
-      return;
-    }
-
-    const card = findCardRoot(button, dialog);
-    if (!card || seenCards.has(card)) {
+  dialog.querySelectorAll('article [role="button"]').forEach((card) => {
+    if (seenCards.has(card) || !isPendingLocalCard(card)) {
       return;
     }
 
@@ -336,13 +343,16 @@ const collectCards = (dialog: Element): UploadAssetEntry[] => {
       return;
     }
 
-    const actionsContainer = button.parentElement as HTMLElement | null;
-    if (!actionsContainer) {
+    const assetName = extractAssetName(card);
+    if (!assetName || /\.(svg|gif)$/i.test(assetName)) {
       return;
     }
 
-    const assetName = extractAssetName(card);
-    if (!assetName) {
+    const nativeButtons = getNativeActionButtons(card);
+    // In Strapi's AssetCardBase (local=true), the last native action button is Edit.
+    const editButton = nativeButtons[nativeButtons.length - 1];
+    const actionsContainer = editButton?.parentElement as HTMLElement | null;
+    if (!editButton || !actionsContainer) {
       return;
     }
 
@@ -361,7 +371,7 @@ const collectCards = (dialog: Element): UploadAssetEntry[] => {
       assetName,
       width: dimensions?.width,
       height: dimensions?.height,
-      actionsContainer: ensureActionHost(actionsContainer, button, assetId),
+      actionsContainer: ensureActionHost(actionsContainer, editButton, assetId),
       footerHost: ensureFooterHost(card as HTMLElement, assetId) ?? undefined,
     });
   });
@@ -380,6 +390,10 @@ const syncUploadModal = () => {
     clearUploadSession();
     unmountBridge();
     return;
+  }
+
+  if (!globalSettingsLoaded) {
+    void loadGlobalSettings();
   }
 
   ensureBridge(dialog);
@@ -409,7 +423,7 @@ export const initUploadEnhancer = () => {
   patchUploadFetch();
 
   const boot = () => {
-    loadGlobalSettings();
+    void loadGlobalSettings();
     syncUploadModal();
 
     const observer = new MutationObserver((mutations) => {

@@ -12,8 +12,13 @@ const prefixPluginTranslations = (
   }, {});
 };
 
+interface StrapiAdminApp {
+  addSettingsLink: (section: string, link: Record<string, unknown>) => void;
+  registerPlugin: (plugin: { id: string; name: string }) => void;
+}
+
 export default {
-  register(app) {
+  register(app: StrapiAdminApp) {
     app.addSettingsLink('global', {
       id: 'image-optimizer',
       to: 'image-optimizer',
@@ -25,7 +30,7 @@ export default {
         import('./pages/SettingsPage').then((mod) => ({
           default: mod.ProtectedSettingsPage,
         })),
-      permissions: [],
+      permissions: [{ action: 'plugin::image-optimizer.settings.read', subject: null }],
     });
 
     app.registerPlugin({

@@ -17,20 +17,10 @@ interface OptimizerUploadContext {
 
 export const optimizerUploadContext = new AsyncLocalStorage<OptimizerUploadContext>();
 
-let fallbackContext: OptimizerUploadContext | null = null;
-
 export const createUploadContext = (preferences: UploadFilePreference[]): OptimizerUploadContext => ({
   preferences,
   nextIndex: 0,
 });
-
-export const setFallbackUploadPreferences = (preferences: UploadFilePreference[]) => {
-  fallbackContext = createUploadContext(preferences);
-};
-
-export const clearFallbackUploadPreferences = () => {
-  fallbackContext = null;
-};
 
 const getActivePreferences = () => {
   const store = optimizerUploadContext.getStore();
@@ -39,7 +29,7 @@ const getActivePreferences = () => {
     return store;
   }
 
-  return fallbackContext;
+  return null;
 };
 
 export const parseUploadPreferences = (body: Record<string, unknown> | undefined) => {
@@ -103,5 +93,5 @@ export const isUploadRoute = (method: string, path: string) => {
 
   const normalizedPath = path.replace(/\/+$/, '') || '/';
 
-  return normalizedPath === '/upload';
+  return /(?:^|\/)upload$/.test(normalizedPath);
 };

@@ -26,6 +26,7 @@ import {
   type OptimizationChoice,
   type OptimizationMode,
 } from '../pluginId';
+import { setGlobalSettings as syncUploadStoreGlobalSettings } from '../utils/uploadAssetStore';
 
 const SETTINGS_READ = [{ action: 'plugin::image-optimizer.settings.read', subject: null }];
 const SETTINGS_UPDATE = [{ action: 'plugin::image-optimizer.settings.update', subject: null }];
@@ -33,12 +34,23 @@ const SETTINGS_UPDATE = [{ action: 'plugin::image-optimizer.settings.update', su
 const CHOICES: OptimizationChoice[] = ['original', 'global', 'custom'];
 const MODES: OptimizationMode[] = ['webp', 'compress'];
 
+const isSettingsValid = (settings: GlobalOptimizationSettings) =>
+  Number.isFinite(settings.webpQuality) &&
+  settings.webpQuality >= 1 &&
+  settings.webpQuality <= 100 &&
+  Number.isFinite(settings.jpegQuality) &&
+  settings.jpegQuality >= 1 &&
+  settings.jpegQuality <= 100 &&
+  Number.isFinite(settings.pngCompressionLevel) &&
+  settings.pngCompressionLevel >= 0 &&
+  settings.pngCompressionLevel <= 9;
+
 export const SettingsPage = () => {
   const { formatMessage } = useIntl();
   const { get, put } = useFetchClient();
   const { toggleNotification } = useNotification();
-  const { allowedActions: readActions } = useRBAC(SETTINGS_READ);
-  const { allowedActions: updateActions } = useRBAC(SETTINGS_UPDATE);
+  const { allowedActions: readActions, isLoading: isLoadingRead } = useRBAC(SETTINGS_READ);
+  const { allowedActions: updateActions, isLoading: isLoadingUpdate } = useRBAC(SETTINGS_UPDATE);
 
   const canReadGlobal = readActions.canRead;
   const canUpdateGlobal = updateActions.canUpdate;
@@ -54,6 +66,10 @@ export const SettingsPage = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    if (isLoadingRead) {
+      return;
+    }
+
     const load = async () => {
       if (!canReadGlobal) {
         setIsLoading(false);
@@ -63,6 +79,7 @@ export const SettingsPage = () => {
       try {
         const { data: settings } = await get(`/${PLUGIN_ID}/settings`);
         setGlobalSettings(settings);
+        syncUploadStoreGlobalSettings(settings);
       } catch {
         toggleNotification({
           type: 'danger',
@@ -74,17 +91,28 @@ export const SettingsPage = () => {
     };
 
     load();
-  }, [canReadGlobal, formatMessage, get, toggleNotification]);
+  }, [canReadGlobal, formatMessage, get, isLoadingRead, toggleNotification]);
 
   const handleSave = async () => {
     if (!canUpdateGlobal) {
       return;
     }
 
+    if (!isSettingsValid(globalSettings)) {
+      toggleNotification({
+        type: 'danger',
+        message: formatMessage({ id: getTranslationKey('settings.error') }),
+      });
+      return;
+    }
+
     setIsSaving(true);
 
     try {
-      await put(`/${PLUGIN_ID}/settings`, globalSettings);
+      const { data: saved } = await put(`/${PLUGIN_ID}/settings`, globalSettings);
+      const nextSettings = saved ?? globalSettings;
+      setGlobalSettings(nextSettings);
+      syncUploadStoreGlobalSettings(nextSettings);
 
       toggleNotification({
         type: 'success',
@@ -100,7 +128,7 @@ export const SettingsPage = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingRead || isLoadingUpdate) {
     return <Page.Loading />;
   }
 
@@ -235,5 +263,9 @@ export const SettingsPage = () => {
 };
 
 export const ProtectedSettingsPage = () => {
-  return <SettingsPage />;
+  return (
+    <Page.Protect permissions={SETTINGS_READ}>
+      <SettingsPage />
+    </Page.Protect>
+  );
 };

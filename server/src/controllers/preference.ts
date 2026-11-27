@@ -4,7 +4,6 @@ import {
   OPTIMIZATION_MODES,
   type OptimizationChoice,
   type OptimizationMode,
-  type OptimizationSettings,
 } from '../constants';
 
 const isValidChoice = (choice: unknown): choice is OptimizationChoice =>
@@ -12,31 +11,6 @@ const isValidChoice = (choice: unknown): choice is OptimizationChoice =>
 
 const isValidMode = (mode: unknown): mode is OptimizationMode =>
   typeof mode === 'string' && OPTIMIZATION_MODES.includes(mode as OptimizationMode);
-
-const isValidCustomSettings = (custom: unknown): custom is OptimizationSettings => {
-  if (!custom || typeof custom !== 'object') {
-    return false;
-  }
-
-  const value = custom as Partial<OptimizationSettings>;
-
-  return (
-    isValidMode(value.mode) &&
-    typeof value.webpQuality === 'number' &&
-    value.webpQuality >= 1 &&
-    value.webpQuality <= 100 &&
-    typeof value.jpegQuality === 'number' &&
-    value.jpegQuality >= 1 &&
-    value.jpegQuality <= 100 &&
-    typeof value.pngCompressionLevel === 'number' &&
-    value.pngCompressionLevel >= 0 &&
-    value.pngCompressionLevel <= 9 &&
-    typeof value.maxWidth === 'number' &&
-    value.maxWidth >= 1 &&
-    typeof value.maxHeight === 'number' &&
-    value.maxHeight >= 1
-  );
-};
 
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
   async getDefaultMode(ctx) {
@@ -48,42 +22,6 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
       jpegQuality: settings.jpegQuality,
       pngCompressionLevel: settings.pngCompressionLevel,
     };
-  },
-
-  async getPreference(ctx) {
-    const userId = ctx.state.user?.id;
-
-    if (!userId) {
-      return ctx.unauthorized();
-    }
-
-    const preferenceService = strapi.plugin('image-optimizer').service('preference');
-    const mode = await preferenceService.getUserPreference(userId);
-    const settings = await preferenceService.getGlobalSettings();
-
-    ctx.body = {
-      mode: mode ?? settings.defaultMode,
-      defaultMode: settings.defaultMode,
-      defaultChoice: settings.defaultChoice,
-    };
-  },
-
-  async updatePreference(ctx) {
-    const userId = ctx.state.user?.id;
-
-    if (!userId) {
-      return ctx.unauthorized();
-    }
-
-    const { mode } = ctx.request.body ?? {};
-
-    if (!isValidMode(mode)) {
-      return ctx.badRequest('Invalid optimization mode');
-    }
-
-    await strapi.plugin('image-optimizer').service('preference').setUserPreference(userId, mode);
-
-    ctx.body = { mode };
   },
 
   async getSettings(ctx) {
@@ -103,15 +41,26 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
       return ctx.badRequest('Invalid default choice');
     }
 
-    if (webpQuality !== undefined && (webpQuality < 1 || webpQuality > 100)) {
+    if (
+      webpQuality !== undefined &&
+      (!Number.isFinite(Number(webpQuality)) || Number(webpQuality) < 1 || Number(webpQuality) > 100)
+    ) {
       return ctx.badRequest('Invalid WebP quality');
     }
 
-    if (jpegQuality !== undefined && (jpegQuality < 1 || jpegQuality > 100)) {
+    if (
+      jpegQuality !== undefined &&
+      (!Number.isFinite(Number(jpegQuality)) || Number(jpegQuality) < 1 || Number(jpegQuality) > 100)
+    ) {
       return ctx.badRequest('Invalid JPEG quality');
     }
 
-    if (pngCompressionLevel !== undefined && (pngCompressionLevel < 0 || pngCompressionLevel > 9)) {
+    if (
+      pngCompressionLevel !== undefined &&
+      (!Number.isFinite(Number(pngCompressionLevel)) ||
+        Number(pngCompressionLevel) < 0 ||
+        Number(pngCompressionLevel) > 9)
+    ) {
       return ctx.badRequest('Invalid PNG compression level');
     }
 

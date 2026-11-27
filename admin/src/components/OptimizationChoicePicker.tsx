@@ -27,7 +27,7 @@ export const OptimizationChoicePicker = ({
     <Field.Root name="optimizationChoice">
       <Radio.Group
         value={value}
-        onValueChange={(nextValue) => onChange(nextValue as OptimizationChoice)}
+        onValueChange={(nextValue: string) => onChange(nextValue as OptimizationChoice)}
         disabled={disabled}
       >
         <Flex direction="column" gap={3} alignItems="stretch">

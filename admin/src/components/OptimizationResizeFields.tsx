@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Field, Grid, TextInput, Typography } from '@strapi/design-system';
 import { useIntl } from 'react-intl';
 import { getTranslationKey, type OptimizationSettings } from '../pluginId';
@@ -21,13 +21,21 @@ export const OptimizationResizeFields = ({
   namePrefix = '',
 }: OptimizationResizeFieldsProps) => {
   const { formatMessage } = useIntl();
+  const [widthInput, setWidthInput] = useState(String(value.maxWidth));
+  const [heightInput, setHeightInput] = useState(String(value.maxHeight));
+
+  useEffect(() => {
+    setWidthInput(String(value.maxWidth));
+  }, [value.maxWidth]);
+
+  useEffect(() => {
+    setHeightInput(String(value.maxHeight));
+  }, [value.maxHeight]);
 
   const aspectRatio =
     sourceWidth && sourceHeight && sourceHeight > 0 ? sourceWidth / sourceHeight : null;
 
-  const handleWidthChange = (rawValue: string) => {
-    const nextWidth = Math.max(1, Number(rawValue) || 1);
-
+  const commitWidth = (nextWidth: number) => {
     if (!aspectRatio) {
       onChange({ maxWidth: nextWidth });
       return;
@@ -39,9 +47,7 @@ export const OptimizationResizeFields = ({
     });
   };
 
-  const handleHeightChange = (rawValue: string) => {
-    const nextHeight = Math.max(1, Number(rawValue) || 1);
-
+  const commitHeight = (nextHeight: number) => {
     if (!aspectRatio) {
       onChange({ maxHeight: nextHeight });
       return;
@@ -51,6 +57,54 @@ export const OptimizationResizeFields = ({
       maxHeight: nextHeight,
       maxWidth: Math.max(1, Math.round(nextHeight * aspectRatio)),
     });
+  };
+
+  const handleWidthChange = (rawValue: string) => {
+    setWidthInput(rawValue);
+    if (rawValue.trim() === '') {
+      return;
+    }
+
+    const parsed = Number(rawValue);
+    if (Number.isFinite(parsed) && parsed >= 1) {
+      commitWidth(Math.round(parsed));
+    }
+  };
+
+  const handleHeightChange = (rawValue: string) => {
+    setHeightInput(rawValue);
+    if (rawValue.trim() === '') {
+      return;
+    }
+
+    const parsed = Number(rawValue);
+    if (Number.isFinite(parsed) && parsed >= 1) {
+      commitHeight(Math.round(parsed));
+    }
+  };
+
+  const handleWidthBlur = () => {
+    if (widthInput.trim() === '') {
+      setWidthInput(String(value.maxWidth));
+      return;
+    }
+
+    const parsed = Number(widthInput);
+    const nextWidth = Number.isFinite(parsed) ? Math.max(1, Math.round(parsed)) : Math.max(1, value.maxWidth);
+    setWidthInput(String(nextWidth));
+    commitWidth(nextWidth);
+  };
+
+  const handleHeightBlur = () => {
+    if (heightInput.trim() === '') {
+      setHeightInput(String(value.maxHeight));
+      return;
+    }
+
+    const parsed = Number(heightInput);
+    const nextHeight = Number.isFinite(parsed) ? Math.max(1, Math.round(parsed)) : Math.max(1, value.maxHeight);
+    setHeightInput(String(nextHeight));
+    commitHeight(nextHeight);
   };
 
   return (
@@ -75,8 +129,9 @@ export const OptimizationResizeFields = ({
           <TextInput
             type="number"
             min={1}
-            value={value.maxWidth}
+            value={widthInput}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleWidthChange(e.target.value)}
+            onBlur={handleWidthBlur}
             disabled={disabled}
           />
         </Field.Root>
@@ -93,8 +148,9 @@ export const OptimizationResizeFields = ({
           <TextInput
             type="number"
             min={1}
-            value={value.maxHeight}
+            value={heightInput}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleHeightChange(e.target.value)}
+            onBlur={handleHeightBlur}
             disabled={disabled}
           />
         </Field.Root>

@@ -178,7 +178,7 @@ export const UploadEnhancerBridge = () => {
           {createPortal(
             <IconButton
               label={formatMessage({ id: getTranslationKey('upload.button.label') })}
-              onClick={(event) => {
+              onClick={(event: MouseEvent<HTMLButtonElement>) => {
                 event.preventDefault();
                 event.stopPropagation();
                 openAssetEditor(card.assetId);
@@ -199,7 +199,7 @@ export const UploadEnhancerBridge = () => {
         </React.Fragment>
       ))}
 
-      {editorPanel ? createPortal(editorPanel, dialogElement) : null}
+      {editorPanel && dialogElement ? createPortal(editorPanel, dialogElement) : null}
     </>
   );
 };

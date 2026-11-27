@@ -12,22 +12,6 @@ export default {
       },
       {
         method: 'GET',
-        path: '/preference',
-        handler: 'preference.getPreference',
-        config: {
-          policies: ['admin::isAuthenticatedAdmin'],
-        },
-      },
-      {
-        method: 'PUT',
-        path: '/preference',
-        handler: 'preference.updatePreference',
-        config: {
-          policies: ['admin::isAuthenticatedAdmin'],
-        },
-      },
-      {
-        method: 'GET',
         path: '/settings',
         handler: 'preference.getSettings',
         config: {

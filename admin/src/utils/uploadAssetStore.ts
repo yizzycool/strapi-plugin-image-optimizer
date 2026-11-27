@@ -351,6 +351,21 @@ const buildFileInfoPayload = (
   return payload;
 };
 
+const parseFileInfo = (raw?: string): Record<string, unknown> => {
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+};
+
 const isMediaUploadRequest = (url: string, method?: string) => {
   if (method?.toUpperCase() !== 'POST') {
     return false;
@@ -358,9 +373,9 @@ const isMediaUploadRequest = (url: string, method?: string) => {
 
   try {
     const pathname = new URL(url, window.location.origin).pathname.replace(/\/+$/, '') || '/';
-    return pathname === '/upload';
+    return pathname === '/upload' || pathname.endsWith('/upload');
   } catch {
-    return url.includes('/upload') && !url.includes('/upload/actions/');
+    return /(?:^|\/)upload(?:[?#]|$)/.test(url);
   }
 };
 
@@ -411,7 +426,7 @@ export const patchUploadFetch = () => {
       files.forEach((file, index) => {
         nextFormData.append('files', file);
 
-        const parsed = JSON.parse(fileInfos[index] ?? '{}') as Record<string, unknown>;
+        const parsed = parseFileInfo(fileInfos[index]);
         const card = findCardForFile(file, parsed, index, files.length);
 
         let assetId = parsed.optimizerAssetId as string | undefined;
